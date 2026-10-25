@@ -84,6 +84,8 @@ export const deviceRoutes = new Hono<AppEnv>()
         platform: d.platform,
         online: onlineIds.has(d.node_id),
         exit: d.can_exit === 1 && d.exit_enabled === 1,
+        // Lets a client skip exits that would leave with its own IP.
+        public_ipv4: d.public_ipv4,
       }));
     return jsonOk(c, peers, started);
   })

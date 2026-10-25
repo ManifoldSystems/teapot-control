@@ -152,6 +152,8 @@ export class Presence extends DurableObject<Bindings> {
         )
           .bind(ips.v4, ips.v6, attachment.node_id)
           .run();
+        // A device moving networks can change which exits others may use.
+        this.peersChanged();
       }
     }
   }
