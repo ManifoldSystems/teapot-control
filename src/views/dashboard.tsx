@@ -40,7 +40,9 @@ const Links = (props: {
         return (
           <div class={`path ${path?.kind ?? ""}`}>
             → {props.names.get(peer) ?? peer.slice(0, 8)}
-            {path ? `: ${path.kind} ${path.rtt_ms}ms` : ""}
+            {path
+              ? `: ${path.kind}${path.rtt_ms >= 0 ? ` ${path.rtt_ms}ms` : ""}`
+              : ""}
             {t && (
               <span class="muted">
                 {" "}
