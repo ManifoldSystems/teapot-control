@@ -33,17 +33,18 @@ HS256 JWT (`aud: device`, 24 h). First login creates the device as `pending`.
 
 ## Device API (Bearer token)
 
-| Method | Path                 | Notes                                                                                           |
-| ------ | -------------------- | ----------------------------------------------------------------------------------------------- |
-| GET    | `/v1/devices/me`     | own row                                                                                         |
-| PUT    | `/v1/devices/me`     | `{name?, platform?, can_exit?}`; omitted fields are kept; `can_exit: false` also turns exit off |
-| GET    | `/v1/peers`          | approved only; other approved devices with `online`, `exit`                                     |
-| GET    | `/v1/exit/allowlist` | approved only; `{exit_enabled, allow: [node_id]}`                                               |
-| GET    | `/v1/presence`       | WebSocket; token as Bearer or `?token=`                                                         |
+| Method | Path                 | Notes                                                                                                                                          |
+| ------ | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| GET    | `/v1/devices/me`     | own row                                                                                                                                        |
+| PUT    | `/v1/devices/me`     | `{name?, platform?, can_exit?}`; omitted fields are kept; `can_exit` is what the device offers now, the owner's exit toggle is kept separately |
+| GET    | `/v1/peers`          | approved only; other approved devices with `online`, `exit`                                                                                    |
+| GET    | `/v1/exit/allowlist` | approved only; `{exit_enabled, allow: [node_id]}`                                                                                              |
+| GET    | `/v1/presence`       | WebSocket; token as Bearer or `?token=`                                                                                                        |
 
 Presence socket: send `ping` (answered `pong` without waking the object) and
 `{"type":"status","paths":[{"peer","kind":"direct|relay","rtt_ms"}]}`. The
-server sends `{"type":"peers_changed"}` when approval or exit settings change,
+server sends `{"type":"peers_changed"}` when approval, exit settings, or any
+device's online state change,
 and closes with `4000` (replaced by a newer connection) or `4001` (removed or
 revoked).
 
