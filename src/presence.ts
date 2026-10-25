@@ -54,12 +54,30 @@ export class Presence extends DurableObject<Bindings> {
       return new Response(null, { status: 101, webSocket: client });
     }
 
+    if (pathname === "/sockets") {
+      // Debug view for the dashboard admin: every socket, open or not.
+      return Response.json(
+        this.ctx.getWebSockets().map((ws) => ({
+          ready_state: ws.readyState,
+          tags: this.ctx.getTags(ws),
+          attachment: ws.deserializeAttachment(),
+        }))
+      );
+    }
+
     if (pathname === "/online") {
-      const online: OnlineDevice[] = this.ctx
-        .getWebSockets()
-        .map((ws) => ws.deserializeAttachment() as Attachment)
-        .filter(Boolean);
-      return Response.json(online);
+      // A replaced socket can linger here while it closes; its attachment
+      // holds stale paths/traffic. Count open sockets only, newest per device.
+      const newest = new Map<string, OnlineDevice>();
+      for (const ws of this.ctx.getWebSockets()) {
+        if (ws.readyState !== WebSocket.OPEN) continue;
+        const a = ws.deserializeAttachment() as Attachment | null;
+        if (!a) continue;
+        const seen = newest.get(a.node_id);
+        if (!seen || seen.connected_at < a.connected_at)
+          newest.set(a.node_id, a);
+      }
+      return Response.json([...newest.values()]);
     }
 
     if (pathname === "/broadcast" && request.method === "POST") {

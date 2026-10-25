@@ -96,6 +96,10 @@ export const adminRoutes = new Hono<AppEnv>()
     return c.html(<ApprovePage nodeId={id} device={device} state="added" />);
   })
 
+  .get("/admin/sockets.json", async (c) =>
+    presenceStub(c.env).fetch("https://presence/sockets")
+  )
+
   .post("/admin/devices/:id/:action", async (c) => {
     const { id, action } = c.req.param();
     const sql = ACTIONS[action];
