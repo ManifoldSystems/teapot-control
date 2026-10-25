@@ -49,6 +49,7 @@ export class Presence extends DurableObject<Bindings> {
       )
         .bind(ip, nodeId)
         .run();
+      this.peersChanged();
       return new Response(null, { status: 101, webSocket: client });
     }
 
@@ -61,14 +62,7 @@ export class Presence extends DurableObject<Bindings> {
     }
 
     if (pathname === "/broadcast" && request.method === "POST") {
-      const message = await request.text();
-      for (const ws of this.ctx.getWebSockets()) {
-        try {
-          ws.send(message);
-        } catch {
-          // closing socket; webSocketClose will clean up
-        }
-      }
+      this.broadcast(await request.text());
       return new Response(null, { status: 204 });
     }
 
@@ -121,5 +115,21 @@ export class Presence extends DurableObject<Bindings> {
   private async offline(ws: WebSocket) {
     const attachment = ws.deserializeAttachment() as Attachment | null;
     if (attachment) await markSeen(this.env.DB, attachment.node_id);
+    this.peersChanged();
+  }
+
+  /** Online/offline changes which exit nodes clients may pick. */
+  private peersChanged() {
+    this.broadcast(JSON.stringify({ type: "peers_changed" }));
+  }
+
+  private broadcast(message: string) {
+    for (const ws of this.ctx.getWebSockets()) {
+      try {
+        ws.send(message);
+      } catch {
+        // closing socket; webSocketClose will clean up
+      }
+    }
   }
 }
