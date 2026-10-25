@@ -7,17 +7,17 @@ registry, approval, exit-node allowlist, presence, and a dashboard. Hono on
 Proxy traffic never passes through here; devices talk to each other over iroh.
 Wire format: [`teapot/docs/protocol.md`](https://github.com/ManifoldSystems/teapot/blob/main/docs/protocol.md).
 
-Live: `https://teapot-control.sociopath-xyz.workers.dev`
+Live: `https://teapot.fannn.tech` (custom domain; the workers.dev URL is off)
 
 ## Pieces
 
-| Binding                     | What                                                                                         |
-| --------------------------- | -------------------------------------------------------------------------------------------- |
-| `DB` (D1)                   | `devices`: node id, name, platform, pending/approved, exit flags, last IP, last seen         |
-| `PRESENCE` (Durable Object) | one WebSocket per device; open socket = online. Hibernation API, `ping`→`pong` auto-response |
-| `CONTROL_SECRET` (secret)   | HMAC for challenges, device JWTs, admin cookie. ≥ 32 chars                                   |
-| `ADMIN_TOKEN` (secret)      | dashboard password                                                                           |
-| `LOGIN_LIMITER` / `AUTH_LIMITER` | per-IP rate limits: `POST /login` 10/min, `/v1/auth/*` 60/min |
+| Binding                          | What                                                                                         |
+| -------------------------------- | -------------------------------------------------------------------------------------------- |
+| `DB` (D1)                        | `devices`: node id, name, platform, pending/approved, exit flags, last IP, last seen         |
+| `PRESENCE` (Durable Object)      | one WebSocket per device; open socket = online. Hibernation API, `ping`→`pong` auto-response |
+| `CONTROL_SECRET` (secret)        | HMAC for challenges, device JWTs, admin cookie. ≥ 32 chars                                   |
+| `ADMIN_TOKEN` (secret)           | dashboard password                                                                           |
+| `LOGIN_LIMITER` / `AUTH_LIMITER` | per-IP rate limits: `POST /login` 10/min, `/v1/auth/*` 60/min                                |
 
 ## Device auth
 
@@ -97,9 +97,21 @@ Changing `ADMIN_TOKEN` signs out every dashboard session. Changing
 
 ## Gotchas
 
-Right after `wrangler deploy` the Durable Object can still run the previous
-code for a few seconds; a smoke run straight after a deploy that changes
-`presence.ts` may fail once and pass on the next run.
+**The Durable Object can keep running old code after a deploy.** While devices
+keep their presence sockets busy, the `Presence` instance is not replaced: the
+Worker serves the new version but `presence.ts` changes do not take effect.
+Seen on 2026-10-25 across three deploys, hours apart. Check with
+`GET /admin/sockets.json` (admin only; a 404 `not found` means the old object
+is still answering). Fix: stop every agent for about a minute
+(`launchctl bootout …` / `systemctl --user stop teapot`), then start them
+again; the next request runs the new code.
+
+`/admin/sockets.json` lists every presence socket with its ready state and
+attachment (paths, traffic) — the quickest way to see what the dashboard is
+built from.
+
+Moving the Worker to a custom domain turns the workers.dev URL off unless
+`workers_dev` is set; keep it on until every agent points at the new URL.
 
 `scripts/smoke.ts` ends by using up this IP's login budget for a minute; set
 `SKIP_RATE_LIMIT=1` to run it twice in a row.
