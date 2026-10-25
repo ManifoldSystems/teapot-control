@@ -11,6 +11,49 @@ const ago = (iso: string | null) => {
   return `${Math.round(s / 86400)}d ago`;
 };
 
+const bytes = (n: number) => {
+  if (n < 1024) return `${n} B`;
+  const units = ["KB", "MB", "GB", "TB"];
+  let v = n / 1024;
+  let i = 0;
+  while (v >= 1024 && i < units.length - 1) {
+    v /= 1024;
+    i++;
+  }
+  return `${v < 10 ? v.toFixed(1) : Math.round(v)} ${units[i]}`;
+};
+
+/** One line per peer: current path (if connected) and tunnel bytes. */
+const Links = (props: {
+  live: OnlineDevice | undefined;
+  names: Map<string, string>;
+}) => {
+  const paths = props.live?.paths ?? [];
+  const traffic = new Map((props.live?.traffic ?? []).map((t) => [t.peer, t]));
+  const peers = [...new Set([...paths.map((p) => p.peer), ...traffic.keys()])];
+  if (peers.length === 0) return <span class="muted">—</span>;
+  return (
+    <>
+      {peers.map((peer) => {
+        const path = paths.find((p) => p.peer === peer);
+        const t = traffic.get(peer);
+        return (
+          <div class={`path ${path?.kind ?? ""}`}>
+            → {props.names.get(peer) ?? peer.slice(0, 8)}
+            {path ? `: ${path.kind} ${path.rtt_ms}ms` : ""}
+            {t && (
+              <span class="muted">
+                {" "}
+                · ↑{bytes(t.tx)} ↓{bytes(t.rx)}
+              </span>
+            )}
+          </div>
+        );
+      })}
+    </>
+  );
+};
+
 const Action = (props: { path: string; label: string; kind?: string }) => (
   <form method="post" action={props.path}>
     <button class={props.kind ?? ""} type="submit">
@@ -83,16 +126,7 @@ export const DeviceRows = (props: {
               )}
             </td>
             <td>
-              {live?.paths.length ? (
-                live.paths.map((p) => (
-                  <div class={`path ${p.kind}`}>
-                    → {names.get(p.peer) ?? p.peer.slice(0, 8)}: {p.kind}{" "}
-                    {p.rtt_ms}ms
-                  </div>
-                ))
-              ) : (
-                <span class="muted">—</span>
-              )}
+              <Links live={live} names={names} />
             </td>
             <td>
               {d.status === "pending" ? (
@@ -150,7 +184,7 @@ export const DashboardPage = (props: {
               <th>Status</th>
               <th>Presence</th>
               <th>Exit node</th>
-              <th>Paths</th>
+              <th>Links · since agent start</th>
               <th />
             </tr>
           </thead>

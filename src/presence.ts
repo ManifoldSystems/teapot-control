@@ -1,11 +1,12 @@
 import { DurableObject } from "cloudflare:workers";
 import { markSeen } from "./helpers/devices";
-import type { Bindings, OnlineDevice, PeerPath } from "./types";
+import type { Bindings, OnlineDevice, PeerPath, PeerTraffic } from "./types";
 
 type Attachment = {
   node_id: string;
   connected_at: string;
   paths: PeerPath[];
+  traffic?: PeerTraffic[];
 };
 
 const MAX_PATHS = 64;
@@ -79,7 +80,7 @@ export class Presence extends DurableObject<Bindings> {
 
   async webSocketMessage(ws: WebSocket, message: string | ArrayBuffer) {
     if (typeof message !== "string") return;
-    let msg: { type?: unknown; paths?: unknown };
+    let msg: { type?: unknown; paths?: unknown; traffic?: unknown };
     try {
       msg = JSON.parse(message);
     } catch {
@@ -93,6 +94,14 @@ export class Presence extends DurableObject<Bindings> {
             typeof p?.peer === "string" &&
             (p.kind === "direct" || p.kind === "relay") &&
             typeof p.rtt_ms === "number"
+        )
+        .slice(0, MAX_PATHS);
+      attachment.traffic = (Array.isArray(msg.traffic) ? msg.traffic : [])
+        .filter(
+          (t): t is PeerTraffic =>
+            typeof t?.peer === "string" &&
+            Number.isFinite(t.tx) &&
+            Number.isFinite(t.rx)
         )
         .slice(0, MAX_PATHS);
       ws.serializeAttachment(attachment);

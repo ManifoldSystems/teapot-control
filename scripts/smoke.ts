@@ -203,6 +203,7 @@ ws.send(
   JSON.stringify({
     type: "status",
     paths: [{ peer: b.nodeId, kind: "direct", rtt_ms: 23 }],
+    traffic: [{ peer: b.nodeId, tx: 2048, rx: 3 * 1024 * 1024 }],
   })
 );
 ws.send("ping");
@@ -220,6 +221,11 @@ check(
   "dashboard shows path",
   rows.includes("smoke-raspi: direct 23ms"),
   rows.slice(0, 200)
+);
+check(
+  "dashboard shows traffic",
+  rows.includes("↑2.0 KB ↓3.0 MB"),
+  rows.slice(rows.indexOf("smoke-laptop"), rows.indexOf("smoke-laptop") + 1500)
 );
 
 await admin(`/admin/devices/${a.nodeId}/approve`); // triggers a broadcast
@@ -239,6 +245,20 @@ check("presence: offline after close", peerA2?.online === false, after.body);
 for (const d of [a, b]) await admin(`/admin/devices/${d.nodeId}/delete`);
 const gone = await api("/v1/devices/me", { token: a.token });
 check("removed device loses access", gone.status === 401, gone.body);
+
+// Last on purpose: uses up this IP's login budget for a minute.
+if (process.env.SKIP_RATE_LIMIT !== "1") {
+  let limited = false;
+  for (let i = 0; i < 15 && !limited; i++) {
+    const res = await fetch(`${BASE}/login`, {
+      method: "POST",
+      body: new URLSearchParams({ token: "wrong" }),
+      redirect: "manual",
+    });
+    limited = res.status === 429;
+  }
+  check("login is rate limited", limited);
+}
 
 console.log(failures ? `\n${failures} failed` : "\nall passed");
 process.exit(failures ? 1 : 0);
