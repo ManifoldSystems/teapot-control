@@ -43,11 +43,14 @@ export const deviceRoutes = new Hono<AppEnv>()
       typeof body.platform === "string"
         ? body.platform.trim().slice(0, MAX_NAME)
         : null;
-    const canExit = body.can_exit === true ? 1 : 0;
+    // Omitted can_exit keeps the stored value: a proxy run must not switch off
+    // exit on a device that is also an exit node.
+    const canExit =
+      typeof body.can_exit === "boolean" ? (body.can_exit ? 1 : 0) : null;
 
     const nodeId = c.get("nodeId");
     const { meta } = await c.env.DB.prepare(
-      "UPDATE devices SET name = COALESCE(?, name), platform = COALESCE(?, platform), can_exit = ?, exit_enabled = exit_enabled * ? WHERE node_id = ?"
+      "UPDATE devices SET name = COALESCE(?, name), platform = COALESCE(?, platform), can_exit = COALESCE(?, can_exit), exit_enabled = exit_enabled * COALESCE(?, can_exit) WHERE node_id = ?"
     )
       .bind(name, platform, canExit, canExit, nodeId)
       .run();
