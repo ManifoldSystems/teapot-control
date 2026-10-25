@@ -1,0 +1,2 @@
+CONTROL_SECRET=replace-with-at-least-32-random-characters
+ADMIN_TOKEN=replace-with-a-long-password
