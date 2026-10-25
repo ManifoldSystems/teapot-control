@@ -48,6 +48,8 @@ export const publicDevice = (d: Device) => ({
   can_exit: d.can_exit === 1,
   exit_enabled: d.exit_enabled === 1,
   last_ip: d.last_ip,
+  public_ipv4: d.public_ipv4,
+  public_ipv6: d.public_ipv6,
   created_at: d.created_at,
   last_seen_at: d.last_seen_at,
 });
