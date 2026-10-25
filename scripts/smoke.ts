@@ -223,6 +223,13 @@ check(
   rows.includes("smoke-raspi: direct 23ms"),
   rows.slice(0, 200)
 );
+const peersWithIp = await api("/v1/peers", { token: b.token });
+check(
+  "peers carry public_ipv4",
+  peersWithIp.body?.data?.find((p: any) => p.node_id === a.nodeId)
+    ?.public_ipv4 === "203.0.113.7",
+  peersWithIp.body
+);
 check(
   "dashboard shows reported IPv4 and IPv6",
   rows.includes("203.0.113.7") && rows.includes("2001:db8::7"),
