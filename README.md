@@ -17,6 +17,7 @@ Live: `https://teapot-control.example.workers.dev`
 | `PRESENCE` (Durable Object) | one WebSocket per device; open socket = online. Hibernation API, `ping`→`pong` auto-response |
 | `CONTROL_SECRET` (secret)   | HMAC for challenges, device JWTs, admin cookie. ≥ 32 chars                                   |
 | `ADMIN_TOKEN` (secret)      | dashboard password                                                                           |
+| `LOGIN_LIMITER` / `AUTH_LIMITER` | per-IP rate limits: `POST /login` 10/min, `/v1/auth/*` 60/min |
 
 ## Device auth
 
