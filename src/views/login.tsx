@@ -1,6 +1,6 @@
 import { Layout } from "./layout";
 
-export const LoginPage = (props: { error?: string }) => (
+export const LoginPage = (props: { error?: string; next?: string }) => (
   <Layout title="Teapot · Login">
     <main>
       <div class="card login">
@@ -13,6 +13,7 @@ export const LoginPage = (props: { error?: string }) => (
             autofocus
             required
           />
+          <input type="hidden" name="next" value={props.next ?? "/"} />
           {props.error && <p class="err">{props.error}</p>}
           <button class="primary" type="submit">
             Sign in

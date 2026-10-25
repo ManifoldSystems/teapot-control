@@ -49,9 +49,15 @@ revoked).
 
 ## Dashboard
 
-`/` behind `/login` (`ADMIN_TOKEN`, HttpOnly SameSite=Strict cookie, 30 days).
+`/` behind `/login` (`ADMIN_TOKEN`, HttpOnly SameSite=Lax cookie, 30 days).
 Approve / revoke / remove devices, toggle exit, see presence, last public IP,
 and the paths each device reports. Refreshes every 5 s.
+
+`/approve/<node_id>` is the page `teapot login` opens: it shows the device and
+asks to add it. Signed-out visitors go to `/login?next=…` and come back after
+signing in (`next` must be a same-origin path). The cookie is `SameSite=Lax`
+so the link works when opened from a terminal; POSTs from other sites still
+carry no cookie.
 
 Planned: put Cloudflare Access in front and drop the password.
 
