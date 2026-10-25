@@ -90,4 +90,4 @@ Changing `ADMIN_TOKEN` signs out every dashboard session. Changing
 
 Cloudflare's browser integrity check answers `403` / error `1010` to known
 library user agents such as `Python-urllib`. Clients must send their own
-`User-Agent` (the agent uses `teapot/<version>`).
+`User-Agent`; the Rust agent should send `teapot/<version>`.
