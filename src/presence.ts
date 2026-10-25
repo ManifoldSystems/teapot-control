@@ -7,9 +7,12 @@ type Attachment = {
   connected_at: string;
   paths: PeerPath[];
   traffic?: PeerTraffic[];
+  ips?: { v4: string | null; v6: string | null };
 };
 
 const MAX_PATHS = 64;
+const IPV4 = /^(\d{1,3}\.){3}\d{1,3}$/;
+const IPV6 = /^[0-9a-f:]{2,39}$/i;
 
 /**
  * Online = has an open socket here. Uses the hibernation API, so idle sockets
@@ -98,7 +101,12 @@ export class Presence extends DurableObject<Bindings> {
 
   async webSocketMessage(ws: WebSocket, message: string | ArrayBuffer) {
     if (typeof message !== "string") return;
-    let msg: { type?: unknown; paths?: unknown; traffic?: unknown };
+    let msg: {
+      type?: unknown;
+      paths?: unknown;
+      traffic?: unknown;
+      ips?: { v4?: unknown; v6?: unknown };
+    };
     try {
       msg = JSON.parse(message);
     } catch {
@@ -122,7 +130,29 @@ export class Presence extends DurableObject<Bindings> {
             Number.isFinite(t.rx)
         )
         .slice(0, MAX_PATHS);
+      const ips = {
+        v4:
+          typeof msg.ips?.v4 === "string" && IPV4.test(msg.ips.v4)
+            ? msg.ips.v4
+            : null,
+        v6:
+          typeof msg.ips?.v6 === "string" && IPV6.test(msg.ips.v6)
+            ? msg.ips.v6
+            : null,
+      };
+      const changed =
+        (ips.v4 || ips.v6) &&
+        (attachment.ips?.v4 !== ips.v4 || attachment.ips?.v6 !== ips.v6);
+      attachment.ips = ips;
       ws.serializeAttachment(attachment);
+      // D1 only when the addresses change, not on every 5 s status.
+      if (changed) {
+        await this.env.DB.prepare(
+          "UPDATE devices SET public_ipv4 = ?, public_ipv6 = ? WHERE node_id = ?"
+        )
+          .bind(ips.v4, ips.v6, attachment.node_id)
+          .run();
+      }
     }
   }
 

@@ -204,6 +204,7 @@ ws.send(
     type: "status",
     paths: [{ peer: b.nodeId, kind: "direct", rtt_ms: 23 }],
     traffic: [{ peer: b.nodeId, tx: 2048, rx: 3 * 1024 * 1024 }],
+    ips: { v4: "203.0.113.7", v6: "2001:db8::7" },
   })
 );
 ws.send("ping");
@@ -221,6 +222,11 @@ check(
   "dashboard shows path",
   rows.includes("smoke-raspi: direct 23ms"),
   rows.slice(0, 200)
+);
+check(
+  "dashboard shows reported IPv4 and IPv6",
+  rows.includes("203.0.113.7") && rows.includes("2001:db8::7"),
+  rows.slice(rows.indexOf("smoke-laptop"), rows.indexOf("smoke-laptop") + 1500)
 );
 check(
   "dashboard shows traffic",

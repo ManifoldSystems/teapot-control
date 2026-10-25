@@ -107,7 +107,22 @@ export const DeviceRows = (props: {
                 <span class="muted">{ago(d.last_seen_at)}</span>
               )}
               <div>
-                <code class="muted">{d.last_ip ?? ""}</code>
+                {d.public_ipv4 || d.public_ipv6 ? (
+                  <>
+                    {d.public_ipv4 && (
+                      <div>
+                        <code class="muted">{d.public_ipv4}</code>
+                      </div>
+                    )}
+                    {d.public_ipv6 && (
+                      <div>
+                        <code class="muted">{d.public_ipv6}</code>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <code class="muted">{d.last_ip ?? ""}</code>
+                )}
               </div>
             </td>
             <td>
