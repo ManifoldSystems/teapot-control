@@ -33,8 +33,16 @@ export type PeerPath = {
   rtt_ms: number;
 };
 
+/** Tunnel bytes since the device's agent started, from its side. */
+export type PeerTraffic = {
+  peer: string;
+  tx: number;
+  rx: number;
+};
+
 export type OnlineDevice = {
   node_id: string;
   connected_at: string;
   paths: PeerPath[];
+  traffic?: PeerTraffic[];
 };

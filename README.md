@@ -52,7 +52,8 @@ revoked).
 
 `/` behind `/login` (`ADMIN_TOKEN`, HttpOnly SameSite=Lax cookie, 30 days).
 Approve / revoke / remove devices, toggle exit, see presence, last public IP,
-and the paths each device reports. Refreshes every 5 s.
+and per peer the path (direct/relay, RTT) and tunnel bytes each device
+reports since its agent started. Refreshes every 5 s.
 
 `/approve/<node_id>` is the page `teapot login` opens: it shows the device and
 asks to add it. Signed-out visitors go to `/login?next=…` and come back after
@@ -93,7 +94,15 @@ Changing `ADMIN_TOKEN` signs out every dashboard session. Changing
 | `bun run format`                            | Biome                                                                                        |
 | `BASE=… ADMIN_TOKEN=… bun scripts/smoke.ts` | end to end against a running deployment: auth, approval, peers, allowlist, presence, cleanup |
 
-## Gotcha
+## Gotchas
+
+Right after `wrangler deploy` the Durable Object can still run the previous
+code for a few seconds; a smoke run straight after a deploy that changes
+`presence.ts` may fail once and pass on the next run.
+
+`scripts/smoke.ts` ends by using up this IP's login budget for a minute; set
+`SKIP_RATE_LIMIT=1` to run it twice in a row.
+
 
 Cloudflare's browser integrity check answers `403` / error `1010` to known
 library user agents such as `Python-urllib`. Clients must send their own
