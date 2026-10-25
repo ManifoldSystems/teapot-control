@@ -33,13 +33,13 @@ HS256 JWT (`aud: device`, 24 h). First login creates the device as `pending`.
 
 ## Device API (Bearer token)
 
-| Method | Path                 | Notes                                                               |
-| ------ | -------------------- | ------------------------------------------------------------------- |
-| GET    | `/v1/devices/me`     | own row                                                             |
-| PUT    | `/v1/devices/me`     | `{name, platform, can_exit}`; `can_exit: false` also turns exit off |
-| GET    | `/v1/peers`          | approved only; other approved devices with `online`, `exit`         |
-| GET    | `/v1/exit/allowlist` | approved only; `{exit_enabled, allow: [node_id]}`                   |
-| GET    | `/v1/presence`       | WebSocket; token as Bearer or `?token=`                             |
+| Method | Path                 | Notes                                                                                           |
+| ------ | -------------------- | ----------------------------------------------------------------------------------------------- |
+| GET    | `/v1/devices/me`     | own row                                                                                         |
+| PUT    | `/v1/devices/me`     | `{name?, platform?, can_exit?}`; omitted fields are kept; `can_exit: false` also turns exit off |
+| GET    | `/v1/peers`          | approved only; other approved devices with `online`, `exit`                                     |
+| GET    | `/v1/exit/allowlist` | approved only; `{exit_enabled, allow: [node_id]}`                                               |
+| GET    | `/v1/presence`       | WebSocket; token as Bearer or `?token=`                                                         |
 
 Presence socket: send `ping` (answered `pong` without waking the object) and
 `{"type":"status","paths":[{"peer","kind":"direct|relay","rtt_ms"}]}`. The
