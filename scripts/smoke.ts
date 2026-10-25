@@ -128,7 +128,54 @@ const admin = (path: string) =>
     headers: { cookie },
     redirect: "manual",
   });
-for (const d of [a, b]) await admin(`/admin/devices/${d.nodeId}/approve`);
+// `teapot login` flow: approve page → login with next → confirm.
+const approvePath = `/approve/${a.nodeId}`;
+const gated = await fetch(`${BASE}${approvePath}`, { redirect: "manual" });
+check(
+  "approve page sends anonymous users to login with next",
+  gated.status === 302 &&
+    gated.headers.get("location") ===
+      `/login?next=${encodeURIComponent(approvePath)}`,
+  gated.headers.get("location")
+);
+const nextLogin = await fetch(`${BASE}/login`, {
+  method: "POST",
+  body: new URLSearchParams({ token: ADMIN_TOKEN, next: approvePath }),
+  redirect: "manual",
+});
+check(
+  "login returns to next",
+  nextLogin.headers.get("location") === approvePath,
+  nextLogin.headers.get("location")
+);
+const evil = await fetch(`${BASE}/login`, {
+  method: "POST",
+  body: new URLSearchParams({ token: ADMIN_TOKEN, next: "//evil.example" }),
+  redirect: "manual",
+});
+check(
+  "login ignores off-site next",
+  evil.headers.get("location") === "/",
+  evil.headers.get("location")
+);
+const confirm = await (
+  await fetch(`${BASE}${approvePath}`, { headers: { cookie } })
+).text();
+check(
+  "approve page asks to confirm",
+  confirm.includes("Add this device") && confirm.includes("smoke-laptop"),
+  confirm.slice(0, 200)
+);
+const added = await (
+  await fetch(`${BASE}${approvePath}`, { method: "POST", headers: { cookie } })
+).text();
+check(
+  "approve page adds device",
+  added.includes("was added"),
+  added.slice(0, 200)
+);
+
+await admin(`/admin/devices/${b.nodeId}/approve`);
 await admin(`/admin/devices/${b.nodeId}/exit`);
 
 const peers = await api("/v1/peers", { token: a.token });

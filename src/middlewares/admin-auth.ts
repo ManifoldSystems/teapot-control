@@ -15,7 +15,22 @@ export const isAdmin = async (c: Context<AppEnv>) => {
   return !!cookie && safeEqual(cookie, await adminCookieValue(c));
 };
 
+/** Only same-origin paths, so `?next=` cannot bounce to another site. */
+export const safeNext = (next: unknown) =>
+  typeof next === "string" &&
+  next.startsWith("/") &&
+  !next.startsWith("//") &&
+  !next.startsWith("/\\")
+    ? next
+    : "/";
+
 export const adminAuth: MiddlewareHandler<AppEnv> = async (c, next) => {
-  if (!(await isAdmin(c))) return c.redirect("/login");
+  if (!(await isAdmin(c))) {
+    const url = new URL(c.req.url);
+    const back = url.pathname + url.search;
+    return c.redirect(
+      back === "/" ? "/login" : `/login?next=${encodeURIComponent(back)}`
+    );
+  }
   await next();
 };
