@@ -1,0 +1,25 @@
+{
+  "name": "teapot-control",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy --minify",
+    "cf-typegen": "wrangler types --env-interface CloudflareBindings",
+    "migrate:local": "wrangler d1 migrations apply teapot-control --local",
+    "migrate:remote": "wrangler d1 migrations apply teapot-control --remote",
+    "format": "biome check --write .",
+    "lint": "biome lint .",
+    "test": "bun test tests",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "hono": "^4.13.7"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.13",
+    "@types/bun": "^1.4.2",
+    "typescript": "^7.0.2",
+    "wrangler": "^4.110.0"
+  }
+}
