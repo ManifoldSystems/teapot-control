@@ -21,6 +21,14 @@ export class Logs extends DurableObject<Bindings> {
       id TEXT NOT NULL, timestamp INTEGER NOT NULL, level TEXT NOT NULL,
       source TEXT NOT NULL, message TEXT NOT NULL, received_at INTEGER NOT NULL,
       UNIQUE(node_id, id))`);
+    // Every statement below must use an index: Durable Objects bill rows
+    // read, and a full scan of 10,000 rows per upload exhausted the free tier.
+    ctx.storage.sql.exec(
+      "CREATE INDEX IF NOT EXISTS logs_received ON logs(received_at)"
+    );
+    ctx.storage.sql.exec(
+      "CREATE INDEX IF NOT EXISTS logs_node ON logs(node_id, cursor)"
+    );
     ctx.setWebSocketAutoResponse(
       new WebSocketRequestResponsePair("ping", "pong")
     );
@@ -67,7 +75,6 @@ export class Logs extends DurableObject<Bindings> {
               .toArray()
           );
         }
-        this.prune();
       });
       for (const ws of this.ctx.getWebSockets()) {
         const viewer = ws.deserializeAttachment() as Viewer;
@@ -92,7 +99,6 @@ export class Logs extends DurableObject<Bindings> {
     } catch {
       return new Response("invalid filter", { status: 400 });
     }
-    this.prune();
     if (url.pathname === "/stream") {
       const owner = request.headers.get("x-teapot-viewer");
       if (
@@ -133,17 +139,24 @@ export class Logs extends DurableObject<Bindings> {
   }
 
   private query(f: LogFilter): StoredLog[] {
-    const rows = this.ctx.storage.sql
-      .exec<StoredLog>(
-        `SELECT * FROM logs WHERE (? = '' OR node_id = ?) AND
-       (CASE level WHEN 'debug' THEN 0 WHEN 'info' THEN 1 WHEN 'warn' THEN 2 ELSE 3 END) >= ?
-       AND cursor > ? ORDER BY cursor ${f.after === null ? "DESC" : "ASC"} LIMIT 200`,
-        f.device,
-        f.device,
-        f.level,
-        f.after ?? 0
-      )
-      .toArray();
+    // Separate statements so a device filter can use logs_node.
+    const level =
+      "(CASE level WHEN 'debug' THEN 0 WHEN 'info' THEN 1 WHEN 'warn' THEN 2 ELSE 3 END) >= ?";
+    const order = `ORDER BY cursor ${f.after === null ? "DESC" : "ASC"} LIMIT 200`;
+    const rows = (
+      f.device
+        ? this.ctx.storage.sql.exec<StoredLog>(
+            `SELECT * FROM logs WHERE node_id = ? AND ${level} AND cursor > ? ${order}`,
+            f.device,
+            f.level,
+            f.after ?? 0
+          )
+        : this.ctx.storage.sql.exec<StoredLog>(
+            `SELECT * FROM logs WHERE ${level} AND cursor > ? ${order}`,
+            f.level,
+            f.after ?? 0
+          )
+    ).toArray();
     return f.after === null ? rows.reverse() : rows;
   }
 
@@ -174,10 +187,15 @@ export class Logs extends DurableObject<Bindings> {
     }
   }
 
+  /** Runs from the alarm only. Reads about as many rows as it deletes. */
   private prune() {
     this.ctx.storage.sql.exec(
-      "DELETE FROM logs WHERE received_at < ? OR cursor <= COALESCE((SELECT cursor FROM logs ORDER BY cursor DESC LIMIT 1 OFFSET 10000), 0)",
+      "DELETE FROM logs WHERE received_at < ?",
       Date.now() - WEEK
+    );
+    // Cursors only grow, so this keeps at most the newest 10,000.
+    this.ctx.storage.sql.exec(
+      "DELETE FROM logs WHERE cursor <= (SELECT MAX(cursor) FROM logs) - 10000"
     );
   }
 

@@ -83,5 +83,8 @@ points at the new URL, then turn it off.
 
 - Biome formatting, double quotes, 2 spaces. `jsonOk` / `jsonError` envelopes.
 - D1 writes from the DO only on change (status arrives every 5 s).
+- Durable Object SQL bills **rows read**: every statement in `src/logs.ts` must hit an
+  index (check with `EXPLAIN QUERY PLAN`). A full-scan prune per upload used up the
+  free tier (5M/day) on 26 Oct; pruning now runs from the alarm only.
 - Admin cookie is `SameSite=Lax` on purpose (approve links open from terminals).
 - Cloudflare blocks library user agents (error 1010); clients set their own.

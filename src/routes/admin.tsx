@@ -186,14 +186,14 @@ export const adminRoutes = new Hono<AppEnv>()
     if (!isNodeId(id) || !sql) return c.text("not found", 404);
     await c.env.DB.prepare(sql).bind(id).run();
     if (action === "delete" || action === "revoke") {
-      await logsStub(c.env).fetch("https://logs/kick", {
-        method: "POST",
-        body: id,
-      });
       await presenceStub(c.env).fetch("https://presence/kick", {
         method: "POST",
         body: id,
       });
+      // Best effort: a failing log store must not keep a revoked device in.
+      await logsStub(c.env)
+        .fetch("https://logs/kick", { method: "POST", body: id })
+        .catch((e) => console.error("Could not close log viewers", e));
     }
     await broadcastPeersChanged(c.env);
     const form = await c.req
