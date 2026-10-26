@@ -1,7 +1,12 @@
 import { Hono } from "hono";
 import { deleteCookie, setCookie } from "hono/cookie";
 import { safeEqual } from "../helpers/crypto";
-import { getDevice, listDevices } from "../helpers/devices";
+import {
+  ALIAS_RE,
+  displayName,
+  getDevice,
+  listDevices,
+} from "../helpers/devices";
 import { isNodeId } from "../helpers/hex";
 import {
   broadcastPeersChanged,
@@ -99,6 +104,40 @@ export const adminRoutes = new Hono<AppEnv>()
   .get("/admin/sockets.json", async (c) =>
     presenceStub(c.env).fetch("https://presence/sockets")
   )
+
+  // Before the generic action route: "alias" is not in ACTIONS.
+  .post("/admin/devices/:id/alias", async (c) => {
+    const id = c.req.param("id");
+    if (!isNodeId(id)) return c.text("not found", 404);
+    const form = await c.req.parseBody();
+    const alias = typeof form.alias === "string" ? form.alias.trim() : "";
+    if (alias && !ALIAS_RE.test(alias)) {
+      return c.text(
+        "Alias: letters, digits, dot, dash, underscore; up to 64 characters.",
+        400
+      );
+    }
+    if (alias) {
+      const clash = (await listDevices(c.env.DB)).find(
+        (d) =>
+          d.node_id !== id &&
+          [d.alias, d.name].some(
+            (n) => n && n.toLowerCase() === alias.toLowerCase()
+          )
+      );
+      if (clash) {
+        return c.text(
+          `"${alias}" is already used by ${displayName(clash)}.`,
+          409
+        );
+      }
+    }
+    await c.env.DB.prepare("UPDATE devices SET alias = ? WHERE node_id = ?")
+      .bind(alias || null, id)
+      .run();
+    await broadcastPeersChanged(c.env);
+    return c.redirect("/");
+  })
 
   .post("/admin/devices/:id/:action", async (c) => {
     const { id, action } = c.req.param();

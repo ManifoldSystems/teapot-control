@@ -26,6 +26,8 @@ export type Device = {
   last_seen_at: string | null;
   public_ipv4: string | null;
   public_ipv6: string | null;
+  alias: string | null;
+  model: string | null;
 };
 
 /** What a device reports over its presence socket. */

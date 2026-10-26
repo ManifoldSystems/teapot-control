@@ -19,6 +19,10 @@ form{display:inline}button{font:inherit;font-size:12px;padding:3px 10px;border-r
 .empty{padding:32px;text-align:center;color:var(--muted)}
 .login{max-width:340px;margin:12vh auto;padding:24px}.login input{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg);font:inherit;margin:12px 0}
 .err{color:var(--bad);font-size:13px}
+.small{font-size:12px}
+details.rename summary{cursor:pointer;color:var(--muted);font-size:12px;margin-top:4px}
+details.rename form{display:flex;gap:6px;margin-top:6px}
+details.rename input{font:inherit;font-size:12px;padding:3px 6px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg);width:150px}
 `;
 
 export const Layout = (props: { title: string; children: Child }) => (

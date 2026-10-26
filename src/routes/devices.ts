@@ -1,5 +1,10 @@
 import { Hono } from "hono";
-import { getDevice, listDevices, publicDevice } from "../helpers/devices";
+import {
+  displayName,
+  getDevice,
+  listDevices,
+  publicDevice,
+} from "../helpers/devices";
 import { jsonError, jsonOk } from "../helpers/json";
 import {
   broadcastPeersChanged,
@@ -33,7 +38,12 @@ export const deviceRoutes = new Hono<AppEnv>()
   .put("/v1/devices/me", async (c) => {
     const started = performance.now();
     const body = await c.req
-      .json<{ name?: unknown; platform?: unknown; can_exit?: unknown }>()
+      .json<{
+        name?: unknown;
+        platform?: unknown;
+        model?: unknown;
+        can_exit?: unknown;
+      }>()
       .catch(() => ({}) as Record<string, unknown>);
     const name =
       typeof body.name === "string"
@@ -43,6 +53,10 @@ export const deviceRoutes = new Hono<AppEnv>()
       typeof body.platform === "string"
         ? body.platform.trim().slice(0, MAX_NAME)
         : null;
+    const model =
+      typeof body.model === "string"
+        ? body.model.trim().slice(0, MAX_NAME)
+        : null;
     // can_exit is what the device offers right now; exit_enabled is the
     // owner's choice and survives the device restarting without exit.
     // Omitted can_exit keeps the stored value.
@@ -51,9 +65,9 @@ export const deviceRoutes = new Hono<AppEnv>()
 
     const nodeId = c.get("nodeId");
     const { meta } = await c.env.DB.prepare(
-      "UPDATE devices SET name = COALESCE(?, name), platform = COALESCE(?, platform), can_exit = COALESCE(?, can_exit) WHERE node_id = ?"
+      "UPDATE devices SET name = COALESCE(?, name), platform = COALESCE(?, platform), model = COALESCE(?, model), can_exit = COALESCE(?, can_exit) WHERE node_id = ?"
     )
-      .bind(name, platform, canExit, nodeId)
+      .bind(name, platform, model, canExit, nodeId)
       .run();
     if (!meta.changes)
       return jsonError(
@@ -80,7 +94,10 @@ export const deviceRoutes = new Hono<AppEnv>()
       .filter((d) => d.status === "approved" && d.node_id !== me)
       .map((d) => ({
         node_id: d.node_id,
-        name: d.name,
+        // The alias wins, so --exit / via= can use it.
+        name: displayName(d),
+        device_name: d.name,
+        model: d.model,
         platform: d.platform,
         online: onlineIds.has(d.node_id),
         exit: d.can_exit === 1 && d.exit_enabled === 1,

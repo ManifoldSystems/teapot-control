@@ -40,6 +40,13 @@ export const markSeen = (db: D1Database, nodeId: string) =>
     .bind(nodeId)
     .run();
 
+/** Alias if the owner set one, else what the device calls itself. */
+export const displayName = (d: Device) =>
+  d.alias || d.name || d.node_id.slice(0, 8);
+
+/** Usable in a proxy username and on a command line. */
+export const ALIAS_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
+
 export const publicDevice = (d: Device) => ({
   node_id: d.node_id,
   name: d.name,
@@ -50,6 +57,8 @@ export const publicDevice = (d: Device) => ({
   last_ip: d.last_ip,
   public_ipv4: d.public_ipv4,
   public_ipv6: d.public_ipv6,
+  alias: d.alias,
+  model: d.model,
   created_at: d.created_at,
   last_seen_at: d.last_seen_at,
 });
