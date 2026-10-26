@@ -1,4 +1,5 @@
 import { raw } from "hono/html";
+import { displayName } from "../helpers/devices";
 import type { Device, OnlineDevice } from "../types";
 import { Layout } from "./layout";
 
@@ -69,9 +70,7 @@ export const DeviceRows = (props: {
   online: OnlineDevice[];
 }) => {
   const online = new Map(props.online.map((o) => [o.node_id, o]));
-  const names = new Map(
-    props.devices.map((d) => [d.node_id, d.name || d.node_id.slice(0, 8)])
-  );
+  const names = new Map(props.devices.map((d) => [d.node_id, displayName(d)]));
   if (props.devices.length === 0) {
     return (
       <tr>
@@ -90,14 +89,31 @@ export const DeviceRows = (props: {
         return (
           <tr>
             <td>
-              <strong>{d.name || "unnamed"}</strong>
+              <strong>{displayName(d)}</strong>
+              {d.alias && d.name && <div class="muted small">{d.name}</div>}
               <div>
                 <code class="muted" title={d.node_id}>
                   {d.node_id.slice(0, 16)}…
                 </code>
               </div>
+              <details class="rename">
+                <summary>rename</summary>
+                <form method="post" action={`${base}/alias`}>
+                  <input
+                    name="alias"
+                    value={d.alias ?? ""}
+                    placeholder={d.name ?? "alias"}
+                    pattern="[A-Za-z0-9][A-Za-z0-9._-]{0,63}"
+                    title="letters, digits, dot, dash, underscore"
+                  />
+                  <button type="submit">Save</button>
+                </form>
+              </details>
             </td>
-            <td>{d.platform || <span class="muted">—</span>}</td>
+            <td>
+              {d.platform || <span class="muted">—</span>}
+              {d.model && <div class="muted small">{d.model}</div>}
+            </td>
             <td>
               <span class={`pill ${d.status}`}>{d.status}</span>
             </td>

@@ -93,10 +93,16 @@ const putB = await api("/v1/devices/me", {
   body: JSON.stringify({
     name: "smoke-raspi",
     platform: "linux",
+    model: "Raspberry Pi 5",
     can_exit: true,
   }),
 });
 check("PUT /v1/devices/me", putB.body?.data?.can_exit === true, putB.body);
+check(
+  "device model stored",
+  putB.body?.data?.model === "Raspberry Pi 5",
+  putB.body
+);
 
 const pending = await api("/v1/peers", { token: a.token });
 check("pending device gets no peers", pending.status === 403, pending.body);
@@ -182,6 +188,31 @@ const peers = await api("/v1/peers", { token: a.token });
 const peerB = peers.body?.data?.find((p: any) => p.node_id === b.nodeId);
 check("approved device sees exit peer", peerB?.exit === true, peers.body);
 
+// Alias from the dashboard wins in /v1/peers and survives the device's own name.
+const setAlias = (id: string, alias: string) =>
+  fetch(`${BASE}/admin/devices/${id}/alias`, {
+    method: "POST",
+    headers: { cookie },
+    body: new URLSearchParams({ alias }),
+    redirect: "manual",
+  });
+check("alias saved", (await setAlias(b.nodeId, "smoke-exit-1")).status === 302);
+const aliased = await api("/v1/peers", { token: a.token });
+const peerB2 = aliased.body?.data?.find((p: any) => p.node_id === b.nodeId);
+check(
+  "peers use the alias",
+  peerB2?.name === "smoke-exit-1" && peerB2?.device_name === "smoke-raspi",
+  peerB2
+);
+check(
+  "alias clashing with another device's name is refused",
+  (await setAlias(a.nodeId, "smoke-raspi")).status === 409
+);
+check(
+  "alias with a space is refused",
+  (await setAlias(a.nodeId, "bad name")).status === 400
+);
+
 const allow = await api("/v1/exit/allowlist", { token: b.token });
 check(
   "exit allowlist contains client",
@@ -220,7 +251,7 @@ const rows = await (
 ).text();
 check(
   "dashboard shows path",
-  rows.includes("smoke-raspi: direct 23ms"),
+  rows.includes("smoke-exit-1: direct 23ms"),
   rows.slice(0, 200)
 );
 const peersWithIp = await api("/v1/peers", { token: b.token });

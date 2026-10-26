@@ -24,7 +24,7 @@ src/presence.ts           Durable Object "global": one hibernating WS per device
 src/views/*.tsx           dashboard, login, approve (Hono JSX, inline CSS, light/dark)
 src/middlewares/          device-auth (JWT aud=device), admin-auth (cookie, ?next=),
                           rate-limit (LOGIN_LIMITER 10/min, AUTH_LIMITER 60/min)
-migrations/               D1: 0001 devices, 0002 public_ipv4/public_ipv6
+migrations/               D1: 0001 devices, 0002 public_ipv4/public_ipv6, 0003 alias/model
 scripts/smoke.ts          end-to-end against a deployment
 ```
 
@@ -50,6 +50,9 @@ gitignored. Never print the token. Secrets in production: `CONTROL_SECRET`,
   owner approves at `/approve/<id>` (what `teapot login` opens) or the dashboard.
 - `can_exit` = device offers exit now; `exit_enabled` = owner's toggle, stored
   separately so restarts never clear it. Peer `exit` = both.
+- `alias` (set in the dashboard, unique, `[A-Za-z0-9._-]`) wins over the
+  device-reported `name` in /v1/peers and the dashboard; `model` comes from the
+  device (e.g. "OPPO CPH2687").
 - Online = an open presence socket. Connect/close broadcasts `peers_changed`.
 - `last_ip` = address Cloudflare saw (one family); `public_ipv4/ipv6` = what the
   agent reports from its iroh addresses.
