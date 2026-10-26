@@ -261,10 +261,16 @@ check(
     ?.public_ipv4 === "203.0.113.7",
   peersWithIp.body
 );
+check("dashboard row shows reported IPv4", rows.includes("203.0.113.7"));
+const detail = await (
+  await fetch(`${BASE}/devices/${a.nodeId}`, { headers: { cookie } })
+).text();
 check(
-  "dashboard shows reported IPv4 and IPv6",
-  rows.includes("203.0.113.7") && rows.includes("2001:db8::7"),
-  rows.slice(rows.indexOf("smoke-laptop"), rows.indexOf("smoke-laptop") + 1500)
+  "device page shows IPv4, IPv6 and the path",
+  detail.includes("203.0.113.7") &&
+    detail.includes("2001:db8::7") &&
+    detail.includes("smoke-exit-1: direct 23ms"),
+  detail.slice(detail.indexOf("<dl"), detail.indexOf("<dl") + 800)
 );
 check(
   "dashboard shows traffic",

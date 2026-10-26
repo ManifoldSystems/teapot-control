@@ -17,11 +17,11 @@ src/index.ts              exports app + Presence
 src/app.ts                logger → /health → requireConfigured → rate limits → routes
 src/routes/auth.ts        POST /v1/auth/challenge, /v1/auth/verify (Ed25519 over HMAC challenge)
 src/routes/devices.ts     /v1/devices/me, /v1/peers, /v1/exit/allowlist, /v1/presence (WS)
-src/routes/admin.tsx      /login, /, /approve/:id, /admin/devices/:id/:action,
+src/routes/admin.tsx      /login, /, /devices/:id, /approve/:id, /admin/devices/:id/:action,
                           /admin/sockets.json (debug: every presence socket)
 src/presence.ts           Durable Object "global": one hibernating WS per device,
                           attachment = paths, traffic, ips; broadcasts peers_changed
-src/views/*.tsx           dashboard, login, approve (Hono JSX, inline CSS, light/dark)
+src/views/*.tsx           dashboard (⋯ row menu), device (/devices/:id: details, alias), login, approve
 src/middlewares/          device-auth (JWT aud=device), admin-auth (cookie, ?next=),
                           rate-limit (LOGIN_LIMITER 10/min, AUTH_LIMITER 60/min)
 migrations/               D1: 0001 devices, 0002 public_ipv4/public_ipv6, 0003 alias/model

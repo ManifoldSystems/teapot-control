@@ -22,6 +22,7 @@ import {
 import type { AppEnv } from "../types";
 import { ApprovePage } from "../views/approve";
 import { DashboardPage, DeviceRows } from "../views/dashboard";
+import { DevicePage } from "../views/device";
 import { LoginPage } from "../views/login";
 
 const ACTIONS: Record<string, string> = {
@@ -62,6 +63,26 @@ export const adminRoutes = new Hono<AppEnv>()
   .use("/", adminAuth)
   .use("/admin/*", adminAuth)
   .use("/approve/*", adminAuth)
+  .use("/devices/*", adminAuth)
+
+  .get("/devices/:id", async (c) => {
+    const id = c.req.param("id");
+    if (!isNodeId(id)) return c.text("not found", 404);
+    const [devices, online] = await Promise.all([
+      listDevices(c.env.DB),
+      fetchOnline(c.env),
+    ]);
+    const d = devices.find((x) => x.node_id === id);
+    if (!d) return c.redirect("/");
+    return c.html(
+      <DevicePage
+        d={d}
+        live={online.find((o) => o.node_id === id)}
+        names={new Map(devices.map((x) => [x.node_id, displayName(x)]))}
+        error={c.req.query("error")}
+      />
+    );
+  })
 
   .get("/", async (c) => {
     const [devices, online] = await Promise.all([
@@ -111,8 +132,15 @@ export const adminRoutes = new Hono<AppEnv>()
     if (!isNodeId(id)) return c.text("not found", 404);
     const form = await c.req.parseBody();
     const alias = typeof form.alias === "string" ? form.alias.trim() : "";
+    const back = safeNext(form.back);
+    const fail = (message: string, status: 400 | 409) =>
+      back === "/"
+        ? c.text(message, status)
+        : c.redirect(
+            `/devices/${id}?error=${encodeURIComponent(message)}#rename`
+          );
     if (alias && !ALIAS_RE.test(alias)) {
-      return c.text(
+      return fail(
         "Alias: letters, digits, dot, dash, underscore; up to 64 characters.",
         400
       );
@@ -136,7 +164,7 @@ export const adminRoutes = new Hono<AppEnv>()
       .bind(alias || null, id)
       .run();
     await broadcastPeersChanged(c.env);
-    return c.redirect("/");
+    return c.redirect(back);
   })
 
   .post("/admin/devices/:id/:action", async (c) => {
@@ -151,5 +179,9 @@ export const adminRoutes = new Hono<AppEnv>()
       });
     }
     await broadcastPeersChanged(c.env);
-    return c.redirect("/");
+    const form = await c.req
+      .parseBody()
+      .catch(() => ({}) as Record<string, unknown>);
+    // Removed devices have no detail page to return to.
+    return c.redirect(action === "delete" ? "/" : safeNext(form.back));
   });
