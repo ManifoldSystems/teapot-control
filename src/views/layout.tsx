@@ -47,6 +47,13 @@ export const Layout = (props: { title: string; children: Child }) => (
       <title>{props.title}</title>
       <style>{raw(css)}</style>
     </head>
-    <body>{props.children}</body>
+    <body>
+      <nav style="max-width:1100px;margin:auto;padding:12px 16px">
+        <a class="back" href="/admin/logs">
+          Mesh logs
+        </a>
+      </nav>
+      {props.children}
+    </body>
   </html>
 );

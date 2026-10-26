@@ -1,5 +1,6 @@
 import { DurableObject } from "cloudflare:workers";
 import { markSeen } from "./helpers/devices";
+import { controlLog } from "./helpers/logs";
 import type { Bindings, OnlineDevice, PeerPath, PeerTraffic } from "./types";
 
 type Attachment = {
@@ -54,6 +55,9 @@ export class Presence extends DurableObject<Bindings> {
         .bind(ip, nodeId)
         .run();
       this.peersChanged();
+      this.ctx.waitUntil(
+        controlLog(this.env, "presence", `device=${nodeId} connected`)
+      );
       return new Response(null, { status: 101, webSocket: client });
     }
 
@@ -159,6 +163,15 @@ export class Presence extends DurableObject<Bindings> {
   }
 
   async webSocketClose(ws: WebSocket, code: number, reason: string) {
+    const attachment = ws.deserializeAttachment() as Attachment | null;
+    if (attachment)
+      this.ctx.waitUntil(
+        controlLog(
+          this.env,
+          "presence",
+          `device=${attachment.node_id} disconnected code=${code}`
+        )
+      );
     await this.offline(ws);
     try {
       ws.close(code, reason);
@@ -168,6 +181,16 @@ export class Presence extends DurableObject<Bindings> {
   }
 
   async webSocketError(ws: WebSocket) {
+    const attachment = ws.deserializeAttachment() as Attachment | null;
+    if (attachment)
+      this.ctx.waitUntil(
+        controlLog(
+          this.env,
+          "presence",
+          `device=${attachment.node_id} socket error`,
+          "warn"
+        )
+      );
     await this.offline(ws);
   }
 

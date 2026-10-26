@@ -7,6 +7,7 @@ import { adminRoutes } from "./routes/admin";
 import { authRoutes } from "./routes/auth";
 import { deviceRoutes } from "./routes/devices";
 import { healthRoutes } from "./routes/health";
+import { logRoutes } from "./routes/logs";
 import type { AppEnv } from "./types";
 
 export const app = new Hono<AppEnv>();
@@ -19,6 +20,7 @@ app.post("/login", rateLimit("LOGIN_LIMITER"));
 app.use("/v1/auth/*", rateLimit("AUTH_LIMITER"));
 app.route("/", authRoutes);
 app.route("/", deviceRoutes);
+app.route("/", logRoutes);
 app.route("/", adminRoutes);
 
 app.notFound(notFound);

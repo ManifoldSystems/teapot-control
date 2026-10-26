@@ -23,6 +23,10 @@
       {
         "name": "PRESENCE",
         "class_name": "Presence"
+      },
+      {
+        "name": "LOGS",
+        "class_name": "Logs"
       }
     ]
   },
@@ -42,6 +46,10 @@
     {
       "tag": "v1",
       "new_sqlite_classes": ["Presence"]
+    },
+    {
+      "tag": "v2-logs",
+      "new_sqlite_classes": ["Logs"]
     }
   ]
 }

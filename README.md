@@ -2,7 +2,7 @@
 
 Control plane for [Teapot](https://github.com/ManifoldSystems/teapot): device
 registry, approval, exit-node allowlist, presence, and a dashboard. Hono on
-**Cloudflare Workers** with D1 and one Durable Object.
+**Cloudflare Workers** with D1 and separate Presence / Logs Durable Objects.
 
 Proxy traffic never passes through here; devices talk to each other over iroh.
 Wire format: [`teapot/docs/protocol.md`](https://github.com/ManifoldSystems/teapot/blob/main/docs/protocol.md).
@@ -18,6 +18,30 @@ Live: `https://teapot.example.com` (custom domain; the workers.dev URL is off)
 | `CONTROL_SECRET` (secret)        | HMAC for challenges, device JWTs, admin cookie. ≥ 32 chars                                   |
 | `ADMIN_TOKEN` (secret)           | dashboard password                                                                           |
 | `LOGIN_LIMITER` / `AUTH_LIMITER` | per-IP rate limits: `POST /login` 10/min, `/v1/auth/*` 60/min                                |
+
+## Mesh logs
+
+Open **Mesh logs** (`/admin/logs`) for live logs from all devices and control,
+or use the link on a device detail page. Filter by device, minimum level, or
+message; pause/resume and copy the visible history. Approved binary and Flutter
+devices can also view each other's logs using their existing device identity.
+
+`LOGS` is a SQLite-backed Durable Object with bounded history (10,000 entries
+globally, at most seven days), deduplicated upload batches, cursor replay, and
+hibernating viewer sockets independent of presence. Sources keep local logs
+and upload every five seconds. Control adds admin actions, request failures,
+and presence connect/disconnect events. The shared API is specified in
+`teapot/docs/protocol.md`.
+
+Checks: `bun run typecheck`, `bun test`, and `bun run test:logs` (local workerd
+integration: auth, cross-device live delivery, deduplication, replay, filters,
+admin viewing, and revocation). The integration script uses Wrangler's local
+Miniflare/esbuild dependencies and never contacts production.
+
+Deployment adds the `LOGS` binding and `v2-logs` Durable Object migration from
+`wrangler.jsonc`; no D1 migration is needed. Deploy control before updating
+agents. Since presence event logging changes `presence.ts`, use the existing
+fleet stop/restart procedure in `CLAUDE.md` to avoid stale DO code.
 
 ## Device auth
 
