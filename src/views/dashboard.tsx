@@ -172,7 +172,7 @@ export const DeviceRows = (props: {
                 <span class="muted">not capable</span>
               )}
             </td>
-            <td>
+            <td class="links">
               <Links live={live} names={names} />
             </td>
             <td class="row-actions">

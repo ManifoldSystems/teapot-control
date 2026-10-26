@@ -21,7 +21,7 @@ form{display:inline}button{font:inherit;font-size:12px;padding:3px 10px;border-r
 .err{color:var(--bad);font-size:13px}
 .small{font-size:12px}
 a.device{color:inherit;text-decoration:none}a.device:hover strong{text-decoration:underline}
-td.row-actions{text-align:right}td.row-actions>form{margin-right:6px}
+td.row-actions{text-align:right;position:sticky;right:0;background:var(--card)}td.row-actions>form{display:inline-block;margin-right:6px}td.links{white-space:normal;min-width:180px}
 details.menu{display:inline-block}
 details.menu summary{list-style:none;cursor:pointer;padding:2px 9px;border:1px solid var(--line);border-radius:6px;font-weight:700;letter-spacing:1px;color:var(--muted)}
 details.menu summary::-webkit-details-marker{display:none}
