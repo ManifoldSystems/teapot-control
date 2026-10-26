@@ -1,5 +1,6 @@
 import { app } from "./app";
 
+export { Logs } from "./logs";
 export { Presence } from "./presence";
 export { app };
 

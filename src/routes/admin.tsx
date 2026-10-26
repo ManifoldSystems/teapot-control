@@ -8,6 +8,7 @@ import {
   listDevices,
 } from "../helpers/devices";
 import { isNodeId } from "../helpers/hex";
+import { logsStub } from "../helpers/logs";
 import {
   broadcastPeersChanged,
   fetchOnline,
@@ -173,6 +174,10 @@ export const adminRoutes = new Hono<AppEnv>()
     if (!isNodeId(id) || !sql) return c.text("not found", 404);
     await c.env.DB.prepare(sql).bind(id).run();
     if (action === "delete" || action === "revoke") {
+      await logsStub(c.env).fetch("https://logs/kick", {
+        method: "POST",
+        body: id,
+      });
       await presenceStub(c.env).fetch("https://presence/kick", {
         method: "POST",
         body: id,

@@ -29,6 +29,9 @@ export const DevicePage = (props: {
             </span>
           </h1>
         </header>
+        <a class="back" href={`/admin/logs?device=${d.node_id}`}>
+          View device logs →
+        </a>
 
         <div class="card">
           <dl class="kv">
