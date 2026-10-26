@@ -1,4 +1,9 @@
-export type Bindings = CloudflareBindings & {
+export type Bindings = Omit<
+  CloudflareBindings,
+  "PRESENCE_GENERATION" | "PREVIOUS_PRESENCE_GENERATION"
+> & {
+  PRESENCE_GENERATION: string;
+  PREVIOUS_PRESENCE_GENERATION: string;
   /** HMAC key for auth challenges, device tokens, and the admin cookie. */
   CONTROL_SECRET?: string;
   /** Password for the dashboard until Cloudflare Access is in front of it. */
@@ -28,6 +33,8 @@ export type Device = {
   public_ipv6: string | null;
   alias: string | null;
   model: string | null;
+  agent_version: string | null;
+  agent_protocol: number | null;
 };
 
 /** What a device reports over its presence socket. */

@@ -12,7 +12,9 @@ import { logsStub } from "../helpers/logs";
 import {
   broadcastPeersChanged,
   fetchOnline,
+  presenceState,
   presenceStub,
+  retirePresence,
 } from "../helpers/presence";
 import {
   ADMIN_COOKIE,
@@ -93,7 +95,13 @@ export const adminRoutes = new Hono<AppEnv>()
     if (c.req.query("partial") === "rows") {
       return c.html(<DeviceRows devices={devices} online={online} />);
     }
-    return c.html(<DashboardPage devices={devices} online={online} />);
+    return c.html(
+      <DashboardPage
+        devices={devices}
+        online={online}
+        presence={await presenceState(c.env)}
+      />
+    );
   })
 
   // `teapot login` opens this page for its own node id.
@@ -125,6 +133,10 @@ export const adminRoutes = new Hono<AppEnv>()
 
   .get("/admin/sockets.json", async (c) =>
     presenceStub(c.env).fetch("https://presence/sockets")
+  )
+  .get("/admin/presence.json", async (c) => c.json(await presenceState(c.env)))
+  .post("/admin/presence/retire", async (c) =>
+    c.json(await retirePresence(c.env))
   )
 
   // Before the generic action route: "alias" is not in ACTIONS.

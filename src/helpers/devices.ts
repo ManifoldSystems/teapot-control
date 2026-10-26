@@ -59,6 +59,8 @@ export const publicDevice = (d: Device) => ({
   public_ipv6: d.public_ipv6,
   alias: d.alias,
   model: d.model,
+  agent_version: d.agent_version,
+  agent_protocol: d.agent_protocol,
   created_at: d.created_at,
   last_seen_at: d.last_seen_at,
 });
