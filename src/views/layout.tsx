@@ -20,9 +20,23 @@ form{display:inline}button{font:inherit;font-size:12px;padding:3px 10px;border-r
 .login{max-width:340px;margin:12vh auto;padding:24px}.login input{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg);font:inherit;margin:12px 0}
 .err{color:var(--bad);font-size:13px}
 .small{font-size:12px}
-details.rename summary{cursor:pointer;color:var(--muted);font-size:12px;margin-top:4px}
-details.rename form{display:flex;gap:6px;margin-top:6px}
-details.rename input{font:inherit;font-size:12px;padding:3px 6px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg);width:150px}
+a.device{color:inherit;text-decoration:none}a.device:hover strong{text-decoration:underline}
+td.row-actions{text-align:right}td.row-actions>form{margin-right:6px}
+details.menu{display:inline-block}
+details.menu summary{list-style:none;cursor:pointer;padding:2px 9px;border:1px solid var(--line);border-radius:6px;font-weight:700;letter-spacing:1px;color:var(--muted)}
+details.menu summary::-webkit-details-marker{display:none}
+details.menu[open] summary,details.menu summary:hover{color:var(--fg);border-color:var(--fg)}
+.menu-items{position:fixed;z-index:10;min-width:150px;background:var(--card);border:1px solid var(--line);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.18);padding:4px;display:flex;flex-direction:column}
+.menu-items a,.menu-items button{display:block;width:100%;text-align:left;border:0;border-radius:6px;padding:7px 10px;font-size:13px;color:var(--fg);text-decoration:none;background:none}
+.menu-items form{display:block}
+.menu-items a:hover,.menu-items button:hover{background:var(--line)}
+.menu-items button.danger{color:var(--bad)}
+.back{color:var(--muted);text-decoration:none;font-size:13px}.back:hover{color:var(--fg)}
+dl.kv{display:grid;grid-template-columns:max-content 1fr;gap:6px 18px;margin:0;padding:16px}
+dl.kv dt{color:var(--muted);font-size:13px}dl.kv dd{margin:0;word-break:break-all}
+.section{margin-top:16px}.section h2{font-size:13px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin:0 0 8px}
+.inline-form{display:flex;gap:8px;padding:16px;flex-wrap:wrap}.inline-form input{font:inherit;padding:6px 10px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg);min-width:220px}
+.actions-bar{display:flex;gap:8px;padding:16px;flex-wrap:wrap}
 `;
 
 export const Layout = (props: { title: string; children: Child }) => (

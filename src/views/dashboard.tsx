@@ -57,13 +57,54 @@ const Links = (props: {
   );
 };
 
-const Action = (props: { path: string; label: string; kind?: string }) => (
-  <form method="post" action={props.path}>
+const Action = (props: {
+  path: string;
+  label: string;
+  kind?: string;
+  back?: string;
+  confirm?: string;
+}) => (
+  <form
+    method="post"
+    action={props.path}
+    onsubmit={
+      props.confirm
+        ? `return confirm(${JSON.stringify(props.confirm)})`
+        : undefined
+    }
+  >
+    {props.back && <input type="hidden" name="back" value={props.back} />}
     <button class={props.kind ?? ""} type="submit">
       {props.label}
     </button>
   </form>
 );
+
+/** ⋯ menu: everything that is not the row's main action. */
+const RowMenu = (props: { d: Device }) => {
+  const { d } = props;
+  const base = `/admin/devices/${d.node_id}`;
+  return (
+    <details class="menu">
+      <summary aria-label="More actions">⋯</summary>
+      <div class="menu-items">
+        <a href={`/devices/${d.node_id}`}>Details</a>
+        <a href={`/devices/${d.node_id}#rename`}>Rename…</a>
+        {d.status === "approved" && (
+          <Action path={`${base}/revoke`} label="Revoke" />
+        )}
+        <Action
+          path={`${base}/delete`}
+          label="Remove"
+          kind="danger"
+          confirm={`Remove ${displayName(d)}? It has to log in and be approved again.`}
+        />
+      </div>
+    </details>
+  );
+};
+
+export { Action, ago, bytes, Links };
 
 export const DeviceRows = (props: {
   devices: Device[];
@@ -89,26 +130,13 @@ export const DeviceRows = (props: {
         return (
           <tr>
             <td>
-              <strong>{displayName(d)}</strong>
-              {d.alias && d.name && <div class="muted small">{d.name}</div>}
-              <div>
-                <code class="muted" title={d.node_id}>
-                  {d.node_id.slice(0, 16)}…
-                </code>
+              <a class="device" href={`/devices/${d.node_id}`}>
+                <strong>{displayName(d)}</strong>
+              </a>
+              <div class="muted small">
+                {d.alias && d.name ? `${d.name} · ` : ""}
+                <code>{d.node_id.slice(0, 8)}</code>
               </div>
-              <details class="rename">
-                <summary>rename</summary>
-                <form method="post" action={`${base}/alias`}>
-                  <input
-                    name="alias"
-                    value={d.alias ?? ""}
-                    placeholder={d.name ?? "alias"}
-                    pattern="[A-Za-z0-9][A-Za-z0-9._-]{0,63}"
-                    title="letters, digits, dot, dash, underscore"
-                  />
-                  <button type="submit">Save</button>
-                </form>
-              </details>
             </td>
             <td>
               {d.platform || <span class="muted">—</span>}
@@ -125,35 +153,18 @@ export const DeviceRows = (props: {
                 <span class="muted">{ago(d.last_seen_at)}</span>
               )}
               <div>
-                {d.public_ipv4 || d.public_ipv6 ? (
-                  <>
-                    {d.public_ipv4 && (
-                      <div>
-                        <code class="muted">{d.public_ipv4}</code>
-                      </div>
-                    )}
-                    {d.public_ipv6 && (
-                      <div>
-                        <code class="muted">{d.public_ipv6}</code>
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <code class="muted">{d.last_ip ?? ""}</code>
-                )}
+                <code class="muted">
+                  {d.public_ipv4 ?? d.public_ipv6 ?? d.last_ip ?? ""}
+                </code>
               </div>
             </td>
             <td>
               {d.can_exit ? (
-                d.exit_enabled ? (
-                  <Action
-                    path={`${base}/exit`}
-                    label="exit: on"
-                    kind="primary"
-                  />
-                ) : (
-                  <Action path={`${base}/exit`} label="exit: off" />
-                )
+                <Action
+                  path={`${base}/exit`}
+                  label={d.exit_enabled ? "exit: on" : "exit: off"}
+                  kind={d.exit_enabled ? "primary" : undefined}
+                />
               ) : (
                 <span class="muted">not capable</span>
               )}
@@ -161,17 +172,15 @@ export const DeviceRows = (props: {
             <td>
               <Links live={live} names={names} />
             </td>
-            <td>
-              {d.status === "pending" ? (
+            <td class="row-actions">
+              {d.status === "pending" && (
                 <Action
                   path={`${base}/approve`}
                   label="Approve"
                   kind="primary"
                 />
-              ) : (
-                <Action path={`${base}/revoke`} label="Revoke" />
-              )}{" "}
-              <Action path={`${base}/delete`} label="Remove" kind="danger" />
+              )}
+              <RowMenu d={d} />
             </td>
           </tr>
         );
@@ -181,8 +190,23 @@ export const DeviceRows = (props: {
 };
 
 // Re-renders only the table body every 5 s; forms keep working in between.
+// Skipped while a ⋯ menu is open, or the refresh would close it under you.
+// Menus are position:fixed so the table's scroll box does not clip them.
 const poll = `
+document.addEventListener("toggle", (e) => {
+  const d = e.target;
+  if (!(d instanceof HTMLDetailsElement) || !d.classList.contains("menu") || !d.open) return;
+  document.querySelectorAll("details.menu[open]").forEach((o) => { if (o !== d) o.open = false; });
+  const r = d.querySelector("summary").getBoundingClientRect();
+  const m = d.querySelector(".menu-items");
+  m.style.top = (r.bottom + 4) + "px";
+  m.style.right = (window.innerWidth - r.right) + "px";
+}, true);
+document.addEventListener("click", (e) => {
+  if (!e.target.closest("details.menu")) document.querySelectorAll("details.menu[open]").forEach((o) => { o.open = false; });
+});
 setInterval(async () => {
+  if (document.querySelector("details.menu[open]")) return;
   try {
     const res = await fetch("/?partial=rows", { headers: { accept: "text/html" } });
     if (res.redirected) return location.reload();
