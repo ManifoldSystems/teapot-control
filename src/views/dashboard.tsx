@@ -141,6 +141,9 @@ export const DeviceRows = (props: {
             <td>
               {d.platform || <span class="muted">—</span>}
               {d.model && <div class="muted small">{d.model}</div>}
+              <div class="muted small">
+                {d.agent_version ?? "version unknown · update agent"}
+              </div>
             </td>
             <td>
               <span class={`pill ${d.status}`}>{d.status}</span>
@@ -218,6 +221,12 @@ setInterval(async () => {
 export const DashboardPage = (props: {
   devices: Device[];
   online: OnlineDevice[];
+  presence: {
+    control_version: string;
+    generation: string;
+    previous: string | null;
+    remaining: number;
+  };
 }) => (
   <Layout title="Teapot · Devices">
     <main>
@@ -232,6 +241,17 @@ export const DashboardPage = (props: {
           <button type="submit">Sign out</button>
         </form>
       </header>
+      <p class="muted small">
+        Control <code>{props.presence.control_version}</code> · Presence{" "}
+        <code>{props.presence.generation}</code>
+        {props.presence.remaining > 0 &&
+          ` · ${props.presence.remaining} sockets on previous generation`}
+      </p>
+      {props.presence.remaining > 0 && (
+        <form method="post" action="/admin/presence/retire">
+          <button type="submit">Reconnect previous generation</button>
+        </form>
+      )}
       <div class="card">
         <table>
           <thead>

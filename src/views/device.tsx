@@ -44,6 +44,13 @@ export const DevicePage = (props: {
               {d.platform ?? "—"}
               {d.model ? ` · ${d.model}` : ""}
             </dd>
+            <dt>Agent version</dt>
+            <dd>
+              {d.agent_version ??
+                "Unknown · update agent for version reporting"}
+            </dd>
+            <dt>Presence protocol</dt>
+            <dd>{d.agent_protocol ?? "legacy"}</dd>
             <dt>Endpoint id</dt>
             <dd>
               <code>{d.node_id}</code>

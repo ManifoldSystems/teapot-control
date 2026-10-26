@@ -38,10 +38,29 @@ integration: auth, cross-device live delivery, deduplication, replay, filters,
 admin viewing, and revocation). The integration script uses Wrangler's local
 Miniflare/esbuild dependencies and never contacts production.
 
-Deployment adds the `LOGS` binding and `v2-logs` Durable Object migration from
-`wrangler.jsonc`; no D1 migration is needed. Deploy control before updating
-agents. Since presence event logging changes `presence.ts`, use the existing
-fleet stop/restart procedure in `CLAUDE.md` to avoid stale DO code.
+The `LOGS` binding and `v2-logs` Durable Object migration retain history across
+deployments. Version reporting requires D1 migration `0004_agent_version.sql`.
+Apply migrations and deploy control before updating agents.
+
+## Versions and presence deploys
+
+Rust 0.2.0 and Android 1.1.0+2 report their application version and presence
+protocol on connect. Dashboard rows/details show this metadata even offline;
+legacy agents are marked version unknown. This is self-reported metadata,
+not artifact verification or a comparison against a release registry.
+
+`bun run deploy` authenticates using `.admin-token` (or `ADMIN_TOKEN`), discovers
+the active generation, deploys with a fresh `PRESENCE_GENERATION`, and retires
+previous sockets via their existing `/kick` API. Old Android clients reconnect
+without an app update. There is a brief presence interruption; the agents'
+iroh endpoints remain running. Do not run deploys concurrently or use gradual
+deployments. `BASE` overrides the control URL.
+
+Check `/admin/presence.json`: active Worker version, generation, previous
+generation, and `remaining` open old sockets. Retry a failed retirement with
+`bun scripts/deploy.ts --retire-only`; do this before another deploy.
+For rollback, deploy the desired source through this script with a new
+generation rather than routing back to a retired Worker version.
 
 ## Device auth
 
@@ -102,7 +121,7 @@ Deploy (first time):
 ```bash
 bunx wrangler d1 create teapot-control   # put the id in wrangler.jsonc
 bun run migrate:remote
-bun run deploy
+bunx wrangler deploy --minify             # bootstrap only, before admin login exists
 openssl rand -hex 32 | tr -d '\n' | bunx wrangler secret put CONTROL_SECRET
 bunx wrangler secret put ADMIN_TOKEN
 ```
@@ -128,7 +147,8 @@ Seen on 2026-10-25 across three deploys, hours apart. Check with
 `GET /admin/sockets.json` (admin only; a 404 `not found` means the old object
 is still answering). Fix: stop every agent for about a minute
 (`launchctl bootout …` / `systemctl --user stop teapot`), then start them
-again; the next request runs the new code.
+again; the next request runs the new code. The generation-based deploy script
+above replaces that manual procedure; verify it on the fleet during rollout.
 
 `/admin/sockets.json` lists every presence socket with its ready state and
 attachment (paths, traffic) — the quickest way to see what the dashboard is

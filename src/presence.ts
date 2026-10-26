@@ -55,6 +55,14 @@ export class Presence extends DurableObject<Bindings> {
         .bind(ip, nodeId)
         .run();
       this.peersChanged();
+      server.send(
+        JSON.stringify({
+          type: "hello",
+          protocol: 1,
+          control_version: this.env.WORKER_VERSION?.id ?? "local",
+          presence_generation: this.env.PRESENCE_GENERATION || "global",
+        })
+      );
       this.ctx.waitUntil(
         controlLog(this.env, "presence", `device=${nodeId} connected`)
       );

@@ -99,6 +99,8 @@ export const deviceRoutes = new Hono<AppEnv>()
         device_name: d.name,
         model: d.model,
         platform: d.platform,
+        agent_version: d.agent_version,
+        agent_protocol: d.agent_protocol,
         online: onlineIds.has(d.node_id),
         exit: d.can_exit === 1 && d.exit_enabled === 1,
         // Lets a client skip exits that would leave with its own IP.
@@ -141,6 +143,22 @@ export const deviceRoutes = new Hono<AppEnv>()
       );
     }
     const headers = new Headers(c.req.raw.headers);
+    const version = c.req.header("x-teapot-version");
+    const protocol = c.req.header("x-teapot-protocol");
+    if (version !== undefined && !/^[A-Za-z0-9.+_-]{1,64}$/.test(version))
+      return jsonError(c, "invalid agent version", 400, "BAD_VERSION");
+    if (protocol !== undefined && protocol !== "1")
+      return jsonError(
+        c,
+        "unsupported presence protocol",
+        426,
+        "UNSUPPORTED_PROTOCOL"
+      );
+    await c.env.DB.prepare(
+      "UPDATE devices SET agent_version = ?, agent_protocol = ? WHERE node_id = ?"
+    )
+      .bind(version ?? null, protocol === "1" ? 1 : null, nodeId)
+      .run();
     headers.set("x-teapot-node", nodeId);
     headers.set("x-teapot-ip", c.req.header("cf-connecting-ip") ?? "");
     return presenceStub(c.env).fetch("https://presence/connect", { headers });

@@ -31,6 +31,7 @@ function token(node) {
 const cookie = `teapot_admin=${createHmac("sha256", secret).update(`admin:${admin}`).digest("hex")}`;
 async function request(path, node = b, init = {}) {
   return mf.dispatchFetch(`http://localhost${path}`, {
+    redirect: "manual",
     ...init,
     headers: { authorization: `Bearer ${token(node)}`, ...init.headers },
   });
@@ -85,7 +86,13 @@ try {
           modules: true,
           script: await readFile(join(temp, "worker.mjs"), "utf8"),
           compatibilityDate: "2026-09-13",
-          bindings: { CONTROL_SECRET: secret, ADMIN_TOKEN: admin },
+          bindings: {
+            CONTROL_SECRET: secret,
+            ADMIN_TOKEN: admin,
+            PRESENCE_GENERATION: "test-new",
+            PREVIOUS_PRESENCE_GENERATION: "global",
+            WORKER_VERSION: { id: "test-version" },
+          },
           d1Databases: ["DB"],
           durableObjects: {
             PRESENCE: { className: "Presence", useSQLite: true },
@@ -125,6 +132,121 @@ try {
     403
   );
   assert.equal((await request("/v1/logs?after=-1")).status, 400);
+  // Keep an old-generation socket busy while the current generation connects.
+  const namespace = await mf.getDurableObjectNamespace("PRESENCE");
+  const old = namespace.get(namespace.idFromName("global"));
+  const legacy = await old.fetch("https://presence/connect", {
+    headers: { upgrade: "websocket", "x-teapot-node": a },
+  });
+  const legacyNext = viewer(legacy.webSocket);
+  legacy.webSocket.send("ping");
+  while ((await legacyNext()) !== "pong") {
+    /* Drain connect frames. */
+  }
+  assert.equal(
+    (
+      await request("/v1/presence", a, {
+        headers: { upgrade: "websocket", "x-teapot-version": "bad version" },
+      })
+    ).status,
+    400
+  );
+  assert.equal(
+    (
+      await request("/v1/presence", a, {
+        headers: { upgrade: "websocket", "x-teapot-protocol": "2" },
+      })
+    ).status,
+    426
+  );
+  const current = await request("/v1/presence", b, {
+    headers: {
+      upgrade: "websocket",
+      "x-teapot-version": "0.2.0",
+      "x-teapot-protocol": "1",
+    },
+  });
+  assert.equal(current.status, 101);
+  const currentNext = viewer(current.webSocket);
+  let hello;
+  do {
+    hello = await currentNext();
+  } while (hello.type !== "hello");
+  assert.equal(hello.control_version, "test-version");
+  assert.equal(hello.presence_generation, "test-new");
+  const me = await (await request("/v1/devices/me", b)).json();
+  assert.equal(me.data.agent_version, "0.2.0");
+  assert.equal(me.data.agent_protocol, 1);
+  const dashboard = await request("/", a, { headers: { cookie } });
+  assert.equal(dashboard.status, 200);
+  assert.match(await dashboard.text(), /0\.2\.0/);
+  await request("/v1/devices/me", b, {
+    method: "PUT",
+    body: JSON.stringify({ name: "versioned-agent" }),
+  });
+  assert.equal(
+    (await (await request("/v1/devices/me", b)).json()).data.agent_version,
+    "0.2.0"
+  );
+  assert.equal(
+    (await request("/admin/presence/retire", a, { method: "POST" })).status,
+    302
+  );
+  const state = await (
+    await request("/admin/presence.json", a, { headers: { cookie } })
+  ).json();
+  assert.equal(state.remaining, 1);
+  const legacyClosed = new Promise((resolve, reject) => {
+    const timeout = setTimeout(
+      () => reject(Error("legacy socket not retired")),
+      5000
+    );
+    legacy.webSocket.addEventListener("close", (e) => {
+      clearTimeout(timeout);
+      resolve(e.code);
+    });
+  });
+  const retired = await request("/admin/presence/retire", a, {
+    method: "POST",
+    headers: { cookie },
+  });
+  assert.equal(retired.status, 200);
+  assert.equal(await legacyClosed, 4001);
+  assert.equal((await retired.json()).remaining, 0);
+  assert.equal(
+    (
+      await request("/admin/presence/retire", a, {
+        method: "POST",
+        headers: { cookie },
+      })
+    ).status,
+    200
+  );
+  current.webSocket.send("ping");
+  while ((await currentNext()) !== "pong") {
+    /* Current socket survives retirement. */
+  }
+  const downgrade = await request("/v1/presence", b, {
+    headers: { upgrade: "websocket" },
+  });
+  assert.equal(downgrade.status, 101);
+  viewer(downgrade.webSocket);
+  const legacyMe = await (await request("/v1/devices/me", b)).json();
+  assert.equal(legacyMe.data.agent_version, null);
+  assert.equal(legacyMe.data.agent_protocol, null);
+  // Legacy client reconnects on the normal route, without version headers.
+  const reconnected = await request("/v1/presence", a, {
+    headers: { upgrade: "websocket" },
+  });
+  assert.equal(reconnected.status, 101);
+  viewer(reconnected.webSocket);
+  assert.equal(
+    (await (await request("/v1/devices/me", a)).json()).data.agent_version,
+    null
+  );
+  console.log(
+    "✓ presence generation retirement, legacy reconnect, version handshake, auth and validation"
+  );
   const initial = await request(`/v1/logs/stream?device=${a}`, b, {
     headers: { upgrade: "websocket" },
   });

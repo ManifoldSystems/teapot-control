@@ -62,8 +62,13 @@ gitignored. Never print the token. Secrets in production: `CONTROL_SECRET`,
 1. `migrate:remote` **before** deploy when there is a new migration, and check
    it applied (`wrangler d1 execute … pragma_table_info`). It has failed once
    transiently — rerun.
-2. `bun run deploy`.
-3. **If `presence.ts` changed: the Durable Object keeps running the old code
+2. `bun run deploy` now uses `scripts/deploy.ts`: discovers the active generation,
+   deploys a fresh Presence object, then kicks the previous generation's sockets.
+   Requires `.admin-token` or `ADMIN_TOKEN`; no manual stop is needed by design.
+   Verify `/admin/presence.json` and fleet reconnects. Retry retirement with
+   `bun scripts/deploy.ts --retire-only` before any further deployment.
+   No concurrent/gradual deployments; rollback source through the same script.
+3. **Historical problem: the Durable Object keeps running the old code
    while devices keep sockets busy.** Seen across three deploys. Detect:
    `GET /admin/sockets.json` returns `404` text `not found` from the old object,
    or attachments lack new fields. Fix: stop every agent ~80 s, then start them.
