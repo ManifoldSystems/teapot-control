@@ -42,6 +42,24 @@ export type PeerPath = {
   peer: string;
   kind: "direct" | "relay";
   rtt_ms: number;
+  /**
+   * The selected path's remote address: the peer's socket address when direct,
+   * the relay host when relay. Optional — legacy agents never send it.
+   */
+  addr?: string | null;
+};
+
+/**
+ * The last path control saw for a `(device, peer)` pair, kept outside the
+ * socket attachment so it survives the connection closing. `peer` is the other
+ * device; the owning device is the storage key.
+ */
+export type StoredPath = {
+  peer: string;
+  kind: "direct" | "relay";
+  rtt_ms: number;
+  addr: string | null;
+  seen_at: string;
 };
 
 /** Tunnel bytes since the device's agent started, from its side. */

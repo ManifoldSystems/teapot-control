@@ -1,4 +1,4 @@
-import type { Bindings, OnlineDevice } from "../types";
+import type { Bindings, OnlineDevice, StoredPath } from "../types";
 
 /** A deploy gets a fresh object even while the previous one has busy sockets. */
 export const presenceStub = (
@@ -44,6 +44,14 @@ export const retirePresence = async (env: Bindings) => {
 
 export const fetchOnline = async (env: Bindings): Promise<OnlineDevice[]> => {
   const res = await presenceStub(env).fetch("https://presence/online");
+  return res.json();
+};
+
+/** The last path per (device, peer), kept across reconnects, grouped by device. */
+export const fetchLastPaths = async (
+  env: Bindings
+): Promise<Record<string, StoredPath[]>> => {
+  const res = await presenceStub(env).fetch("https://presence/lastpaths");
   return res.json();
 };
 
