@@ -1,6 +1,7 @@
 import { raw } from "hono/html";
 import { displayName } from "../helpers/devices";
-import type { Device, OnlineDevice } from "../types";
+import { isTailnet } from "../helpers/paths";
+import type { Device, OnlineDevice, StoredPath } from "../types";
 import { Layout } from "./layout";
 
 const ago = (iso: string | null) => {
@@ -24,26 +25,58 @@ const bytes = (n: number) => {
   return `${v < 10 ? v.toFixed(1) : Math.round(v)} ${units[i]}`;
 };
 
-/** One line per peer: current path (if connected) and tunnel bytes. */
+const tailnet = (addr: string | null | undefined) =>
+  isTailnet(addr) ? <span class="muted"> (via tailnet)</span> : "";
+
+/**
+ * One line per peer: the current path (if connected) with its address, else the
+ * last path we saw in a muted style, plus tunnel bytes. A `100.64.0.0/10`
+ * address is flagged "via tailnet" so tailnet-direct is not read as public-IP.
+ */
 const Links = (props: {
   live: OnlineDevice | undefined;
+  lastPaths?: StoredPath[];
   names: Map<string, string>;
 }) => {
   const paths = props.live?.paths ?? [];
   const traffic = new Map((props.live?.traffic ?? []).map((t) => [t.peer, t]));
-  const peers = [...new Set([...paths.map((p) => p.peer), ...traffic.keys()])];
+  const last = new Map((props.lastPaths ?? []).map((p) => [p.peer, p]));
+  const peers = [
+    ...new Set([
+      ...paths.map((p) => p.peer),
+      ...traffic.keys(),
+      ...last.keys(),
+    ]),
+  ];
   if (peers.length === 0) return <span class="muted">—</span>;
   return (
     <>
       {peers.map((peer) => {
         const path = paths.find((p) => p.peer === peer);
         const t = traffic.get(peer);
+        const stored = last.get(peer);
         return (
           <div class={`path ${path?.kind ?? ""}`}>
             → {props.names.get(peer) ?? peer.slice(0, 8)}
-            {path
-              ? `: ${path.kind}${path.rtt_ms >= 0 ? ` ${path.rtt_ms}ms` : ""}`
-              : ""}
+            {path ? (
+              <>
+                : {path.kind}
+                {path.addr ? ` ${path.addr}` : ""}
+                {tailnet(path.addr)}
+                {path.rtt_ms >= 0 ? ` ${path.rtt_ms}ms` : ""}
+              </>
+            ) : stored ? (
+              <span class="muted">
+                {" "}
+                · last: {stored.kind}
+                {stored.addr ? ` ${stored.addr}` : ""}
+                {tailnet(stored.addr)}
+                {stored.rtt_ms >= 0 ? ` · ${stored.rtt_ms}ms` : ""} ·{" "}
+                {ago(stored.seen_at)}
+              </span>
+            ) : (
+              ""
+            )}
             {t && (
               <span class="muted">
                 {" "}
@@ -109,6 +142,7 @@ export { Action, ago, bytes, Links };
 export const DeviceRows = (props: {
   devices: Device[];
   online: OnlineDevice[];
+  lastPaths?: Record<string, StoredPath[]>;
 }) => {
   const online = new Map(props.online.map((o) => [o.node_id, o]));
   const names = new Map(props.devices.map((d) => [d.node_id, displayName(d)]));
@@ -173,7 +207,11 @@ export const DeviceRows = (props: {
               )}
             </td>
             <td class="links">
-              <Links live={live} names={names} />
+              <Links
+                live={live}
+                lastPaths={props.lastPaths?.[d.node_id]}
+                names={names}
+              />
             </td>
             <td class="row-actions">
               {d.status === "pending" && (
@@ -221,6 +259,7 @@ setInterval(async () => {
 export const DashboardPage = (props: {
   devices: Device[];
   online: OnlineDevice[];
+  lastPaths?: Record<string, StoredPath[]>;
   presence: {
     control_version: string;
     generation: string;
@@ -266,7 +305,11 @@ export const DashboardPage = (props: {
             </tr>
           </thead>
           <tbody id="rows">
-            <DeviceRows devices={props.devices} online={props.online} />
+            <DeviceRows
+              devices={props.devices}
+              online={props.online}
+              lastPaths={props.lastPaths}
+            />
           </tbody>
         </table>
       </div>

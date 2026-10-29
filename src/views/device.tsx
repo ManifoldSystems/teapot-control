@@ -1,5 +1,5 @@
 import { displayName } from "../helpers/devices";
-import type { Device, OnlineDevice } from "../types";
+import type { Device, OnlineDevice, StoredPath } from "../types";
 import { Action, ago, Links } from "./dashboard";
 import { Layout } from "./layout";
 
@@ -7,6 +7,7 @@ import { Layout } from "./layout";
 export const DevicePage = (props: {
   d: Device;
   live: OnlineDevice | undefined;
+  lastPaths?: StoredPath[];
   names: Map<string, string>;
   error?: string;
 }) => {
@@ -83,7 +84,11 @@ export const DevicePage = (props: {
             </dd>
             <dt>Links</dt>
             <dd>
-              <Links live={live} names={props.names} />
+              <Links
+                live={live}
+                lastPaths={props.lastPaths}
+                names={props.names}
+              />
             </dd>
           </dl>
         </div>

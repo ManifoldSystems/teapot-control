@@ -11,6 +11,7 @@ import { isNodeId } from "../helpers/hex";
 import { logsStub } from "../helpers/logs";
 import {
   broadcastPeersChanged,
+  fetchLastPaths,
   fetchOnline,
   presenceState,
   presenceStub,
@@ -71,9 +72,10 @@ export const adminRoutes = new Hono<AppEnv>()
   .get("/devices/:id", async (c) => {
     const id = c.req.param("id");
     if (!isNodeId(id)) return c.text("not found", 404);
-    const [devices, online] = await Promise.all([
+    const [devices, online, lastPaths] = await Promise.all([
       listDevices(c.env.DB),
       fetchOnline(c.env),
+      fetchLastPaths(c.env),
     ]);
     const d = devices.find((x) => x.node_id === id);
     if (!d) return c.redirect("/");
@@ -81,6 +83,7 @@ export const adminRoutes = new Hono<AppEnv>()
       <DevicePage
         d={d}
         live={online.find((o) => o.node_id === id)}
+        lastPaths={lastPaths[id]}
         names={new Map(devices.map((x) => [x.node_id, displayName(x)]))}
         error={c.req.query("error")}
       />
@@ -88,17 +91,21 @@ export const adminRoutes = new Hono<AppEnv>()
   })
 
   .get("/", async (c) => {
-    const [devices, online] = await Promise.all([
+    const [devices, online, lastPaths] = await Promise.all([
       listDevices(c.env.DB),
       fetchOnline(c.env),
+      fetchLastPaths(c.env),
     ]);
     if (c.req.query("partial") === "rows") {
-      return c.html(<DeviceRows devices={devices} online={online} />);
+      return c.html(
+        <DeviceRows devices={devices} online={online} lastPaths={lastPaths} />
+      );
     }
     return c.html(
       <DashboardPage
         devices={devices}
         online={online}
+        lastPaths={lastPaths}
         presence={await presenceState(c.env)}
       />
     );
