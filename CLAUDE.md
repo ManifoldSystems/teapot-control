@@ -2,13 +2,12 @@
 
 Control plane for [teapot](https://github.com/ManifoldSystems/teapot): device
 registry, approval, exit allowlist, presence, dashboard. Hono on Cloudflare
-Workers with D1 and one Durable Object. Live at **`https://teapot.example.com`**
-(custom domain; workers.dev and preview URLs are off). Proxy traffic never
-passes through here.
+Workers with D1 and Presence / Logs Durable Objects. Deploy your own instance
+on workers.dev or a custom domain. Proxy traffic never passes through here.
 
 Started from `Omniflow-id/Omniflow-Hono-Starter` (routes / middlewares /
 helpers layout, Biome, bun). Wire format: `teapot/docs/protocol.md` in the
-agent repo — change it there first. History: private deployment notes.
+agent repo — change it there first.
 
 ## Layout
 
@@ -36,7 +35,7 @@ bun run dev                      # wrangler dev on :8787, uses .dev.vars
 bun run typecheck && bun test    # tsc + challenge/Ed25519 unit tests
 bunx biome check --write .
 bun run migrate:local | migrate:remote
-bun run deploy
+BASE=https://teapot.example.com bun run deploy  # your deployment URL
 SKIP_RATE_LIMIT=1 ADMIN_TOKEN=$(cat .admin-token) BASE=https://teapot.example.com bun scripts/smoke.ts
 ```
 

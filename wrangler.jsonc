@@ -8,10 +8,9 @@
     "PRESENCE_GENERATION": "global",
     "PREVIOUS_PRESENCE_GENERATION": ""
   },
-  // Only the custom domain; the workers.dev URL is off.
-  "workers_dev": false,
+  // Use your workers.dev URL, or configure your own custom-domain route.
+  "workers_dev": true,
   "preview_urls": false,
-  "routes": [{ "pattern": "teapot.example.com", "custom_domain": true }],
   "observability": {
     "enabled": false
   },

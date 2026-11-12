@@ -7,7 +7,7 @@ registry, approval, exit-node allowlist, presence, and a dashboard. Hono on
 Proxy traffic never passes through here; devices talk to each other over iroh.
 Wire format: [`teapot/docs/protocol.md`](https://github.com/ManifoldSystems/teapot/blob/main/docs/protocol.md).
 
-Live: `https://teapot.example.com` (custom domain; the workers.dev URL is off)
+Self-host on Cloudflare Workers using your own workers.dev URL or custom domain.
 
 ## Pieces
 
@@ -54,11 +54,13 @@ the active generation, deploys with a fresh `PRESENCE_GENERATION`, and retires
 previous sockets via their existing `/kick` API. Old Android clients reconnect
 without an app update. There is a brief presence interruption; the agents'
 iroh endpoints remain running. Do not run deploys concurrently or use gradual
-deployments. `BASE` overrides the control URL.
+deployments. `BASE` is required and selects your control URL.
+For a gitignored deployment config, set `WRANGLER_CONFIG=wrangler.local.jsonc`.
 
 Check `/admin/presence.json`: active Worker version, generation, previous
 generation, and `remaining` open old sockets. Retry a failed retirement with
-`bun scripts/deploy.ts --retire-only`; do this before another deploy.
+`BASE=https://teapot.example.com bun scripts/deploy.ts --retire-only`
+(using your deployment URL); do this before another deploy.
 For rollback, deploy the desired source through this script with a new
 generation rather than routing back to a retired Worker version.
 
@@ -118,12 +120,26 @@ bun run dev
 
 Deploy (first time):
 
+The checked-in D1 ID is a placeholder. Put your D1 ID in `wrangler.jsonc`, or
+copy it to gitignored `wrangler.local.jsonc` and use `--config wrangler.local.jsonc`
+for Wrangler commands. The default config uses workers.dev; to use your own
+domain, add `routes: [{ "pattern": "teapot.example.com", "custom_domain": true }]`
+with your domain and set `workers_dev` according to your deployment.
+
 ```bash
 bunx wrangler d1 create teapot-control   # put the id in wrangler.jsonc
 bun run migrate:remote
 bunx wrangler deploy --minify             # bootstrap only, before admin login exists
 openssl rand -hex 32 | tr -d '\n' | bunx wrangler secret put CONTROL_SECRET
 bunx wrangler secret put ADMIN_TOKEN
+```
+
+For subsequent deployments:
+
+```bash
+BASE=https://teapot.example.com bun run deploy  # replace with your deployment URL
+# With a local config:
+BASE=https://teapot.example.com WRANGLER_CONFIG=wrangler.local.jsonc bun run deploy
 ```
 
 Changing `ADMIN_TOKEN` signs out every dashboard session. Changing
@@ -164,3 +180,7 @@ Moving the Worker to a custom domain turns the workers.dev URL off unless
 Cloudflare's browser integrity check answers `403` / error `1010` to known
 library user agents such as `Python-urllib`. Clients must send their own
 `User-Agent`; the Rust agent should send `teapot/<version>`.
+
+## License
+
+MIT — see [LICENSE](LICENSE).

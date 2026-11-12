@@ -2,6 +2,7 @@
   "name": "teapot-control",
   "type": "module",
   "private": true,
+  "license": "MIT",
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "bun scripts/deploy.ts",

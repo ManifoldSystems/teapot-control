@@ -1,10 +1,20 @@
 // A fresh presence object avoids old code surviving deploy on busy sockets.
 export {};
 
-const base = (process.env.BASE ?? "https://teapot.example.com").replace(
-  /\/$/,
-  ""
-);
+const base = process.env.BASE?.trim().replace(/\/$/, "");
+if (!base)
+  throw new Error("Set BASE to your control plane URL before deploying");
+const url = new URL(base);
+if (
+  !["http:", "https:"].includes(url.protocol) ||
+  url.username ||
+  url.password ||
+  url.search ||
+  url.hash
+)
+  throw new Error(
+    "BASE must be an http(s) URL without credentials, query or fragment"
+  );
 const token = (
   process.env.ADMIN_TOKEN ?? (await Bun.file(".admin-token").text())
 ).trim();
@@ -51,6 +61,9 @@ if (!retireOnly) {
     [
       "bunx",
       "wrangler",
+      ...(process.env.WRANGLER_CONFIG
+        ? ["--config", process.env.WRANGLER_CONFIG]
+        : []),
       "deploy",
       "--minify",
       "--var",
