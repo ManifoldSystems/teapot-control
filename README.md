@@ -184,3 +184,8 @@ library user agents such as `Python-urllib`. Clients must send their own
 ## License
 
 MIT — see [LICENSE](LICENSE).
+
+## Contributing and security
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development checks and pull requests,
+and [SECURITY.md](SECURITY.md) for vulnerability reporting and deployment boundaries.
