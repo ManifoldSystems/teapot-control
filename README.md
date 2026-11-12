@@ -1,5 +1,8 @@
 # Teapot Control
 
+Distributed as source code only. Clone this repository, build the Worker, and
+deploy it to your own Cloudflare account using the setup instructions below.
+
 Control plane for [Teapot](https://github.com/ManifoldSystems/teapot): device
 registry, approval, exit-node allowlist, presence, and a dashboard. Hono on
 **Cloudflare Workers** with D1 and separate Presence / Logs Durable Objects.
