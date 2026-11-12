@@ -20,7 +20,9 @@ import {
 import {
   ADMIN_COOKIE,
   adminAuth,
-  adminCookieValue,
+  createAdminSession,
+  deleteAdminSession,
+  SESSION_SECONDS,
   safeNext,
 } from "../middlewares/admin-auth";
 import type { AppEnv } from "../types";
@@ -47,7 +49,8 @@ export const adminRoutes = new Hono<AppEnv>()
     if (!c.env.ADMIN_TOKEN || !safeEqual(token, c.env.ADMIN_TOKEN)) {
       return c.html(<LoginPage error="Wrong token." next={next} />, 401);
     }
-    setCookie(c, ADMIN_COOKIE, await adminCookieValue(c), {
+    await deleteAdminSession(c);
+    setCookie(c, ADMIN_COOKIE, await createAdminSession(c), {
       httpOnly: true,
       secure: true,
       // Lax, not Strict: the approve link is opened from a terminal, which
@@ -55,11 +58,12 @@ export const adminRoutes = new Hono<AppEnv>()
       // no cookie.
       sameSite: "Lax",
       path: "/",
-      maxAge: 60 * 60 * 24 * 30,
+      maxAge: SESSION_SECONDS,
     });
     return c.redirect(next);
   })
-  .post("/logout", (c) => {
+  .post("/logout", async (c) => {
+    await deleteAdminSession(c);
     deleteCookie(c, ADMIN_COOKIE, { path: "/" });
     return c.redirect("/login");
   })

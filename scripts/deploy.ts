@@ -18,15 +18,19 @@ if (
 const token = (
   process.env.ADMIN_TOKEN ?? (await Bun.file(".admin-token").text())
 ).trim();
-const login = await fetch(`${base}/login`, {
-  method: "POST",
-  headers: { "user-agent": "teapot-deploy/1" },
-  body: new URLSearchParams({ token }),
-  redirect: "manual",
-  signal: AbortSignal.timeout(20000),
-});
-const cookie = login.headers.get("set-cookie")?.split(";")[0];
-if (login.status !== 302 || !cookie) throw new Error("Admin login failed");
+const authenticate = async () => {
+  const login = await fetch(`${base}/login`, {
+    method: "POST",
+    headers: { "user-agent": "teapot-deploy/1" },
+    body: new URLSearchParams({ token }),
+    redirect: "manual",
+    signal: AbortSignal.timeout(20000),
+  });
+  const cookie = login.headers.get("set-cookie")?.split(";")[0];
+  if (login.status !== 302 || !cookie) throw new Error("Admin login failed");
+  return cookie;
+};
+let cookie = await authenticate();
 const admin = (path: string, method = "GET") =>
   fetch(`${base}${path}`, {
     method,
@@ -77,9 +81,12 @@ if (!retireOnly) {
     throw new Error(
       "Worker deploy failed; previous presence has not been retired"
     );
+  // Auth upgrades may invalidate the pre-deployment session.
+  cookie = await authenticate();
   // Wait for the new Worker to be routed before retiring any sockets.
   for (let attempt = 0; attempt < 30; attempt++) {
     const res = await admin("/admin/presence.json");
+    if (res.status === 302 || res.status === 401) cookie = await authenticate();
     if (res.ok && ((await res.json()) as State).generation === generation)
       break;
     if (attempt === 29)
@@ -99,6 +106,7 @@ for (let attempt = 0; attempt < 15; attempt++) {
     throw new Error("Concurrent deploy detected; check presence generations");
   quiet = state.remaining ? 0 : quiet + 1;
   if (quiet >= 3) {
+    await admin("/logout", "POST");
     console.log(
       `Previous presence retired; active ${generation} (${state.control_version})`
     );

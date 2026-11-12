@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { browserSecurity } from "./middlewares/browser-security";
 import { requireConfigured } from "./middlewares/configured";
 import { notFound, onError } from "./middlewares/error";
 import { logger } from "./middlewares/logger";
@@ -12,6 +13,7 @@ import type { AppEnv } from "./types";
 
 export const app = new Hono<AppEnv>();
 
+app.use("*", browserSecurity);
 app.use("*", logger);
 app.route("/", healthRoutes);
 

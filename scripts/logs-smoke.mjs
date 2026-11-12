@@ -28,7 +28,7 @@ function token(node) {
   ).toString("base64url");
   return `${head}.${body}.${createHmac("sha256", secret).update(`${head}.${body}`).digest("base64url")}`;
 }
-const cookie = `teapot_admin=${createHmac("sha256", secret).update(`admin:${admin}`).digest("hex")}`;
+let cookie;
 async function request(path, node = b, init = {}) {
   return mf.dispatchFetch(`http://localhost${path}`, {
     redirect: "manual",
@@ -113,6 +113,44 @@ try {
       .filter((s) => s.trim()))
       await db.prepare(statement).run();
   }
+  const login = async () => {
+    const res = await mf.dispatchFetch("http://localhost/login", {
+      method: "POST",
+      redirect: "manual",
+      body: new URLSearchParams({ token: admin }),
+    });
+    assert.equal(res.status, 302);
+    return res.headers.get("set-cookie").split(";")[0];
+  };
+  cookie = await login();
+  const adminRequest = (path, init = {}) =>
+    mf.dispatchFetch(`http://localhost${path}`, {
+      redirect: "manual",
+      ...init,
+      headers: { cookie, ...init.headers },
+    });
+  assert.equal((await adminRequest("/admin/presence.json")).status, 200);
+  const rejected = await adminRequest("/logout", {
+    method: "POST",
+    headers: { origin: "https://other.example" },
+  });
+  assert.equal(rejected.status, 403);
+  assert.equal(rejected.headers.get("x-frame-options"), "DENY");
+  assert.equal((await adminRequest("/admin/presence.json")).status, 200);
+  assert.equal((await adminRequest("/logout", { method: "POST" })).status, 302);
+  assert.equal(
+    (await adminRequest("/admin/presence.json")).status,
+    302,
+    "logged-out cookie must be revoked"
+  );
+  cookie = await login();
+  await db.prepare("UPDATE admin_sessions SET expires_at = 0").run();
+  assert.equal(
+    (await adminRequest("/admin/presence.json")).status,
+    302,
+    "expired session must fail server-side"
+  );
+  cookie = await login();
   for (const node of [a, b, pending])
     await db
       .prepare("INSERT INTO devices (node_id,status) VALUES (?,?)")
@@ -285,11 +323,26 @@ try {
   assert.equal((await replayNext()).entries[0].id, "test-2");
   const adminView = await mf.dispatchFetch(
     "http://localhost/admin/logs/stream",
-    { headers: { cookie, upgrade: "websocket" } }
+    { redirect: "manual", headers: { cookie, upgrade: "websocket" } }
   );
   assert.equal(adminView.status, 101);
   const adminNext = viewer(adminView.webSocket);
   assert.ok((await adminNext()).entries.length >= 2);
+  adminView.webSocket.send("ping");
+  assert.equal(await adminNext(), "pong");
+  const adminClosed = new Promise((resolve, reject) => {
+    const timer = setTimeout(
+      () => reject(new Error("logout did not close admin viewer")),
+      5000
+    );
+    adminView.webSocket.addEventListener("close", (event) => {
+      clearTimeout(timer);
+      resolve(event.code);
+    });
+  });
+  await adminRequest("/logout", { method: "POST" });
+  assert.equal(await adminClosed, 4001);
+  cookie = await login();
   // A reconnect must replay more than one history page, in monotonic order.
   for (let batch = 0; batch < 5; batch++) {
     await publish(
